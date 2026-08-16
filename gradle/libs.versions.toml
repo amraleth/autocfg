@@ -1,0 +1,17 @@
+[versions]
+java = "25"
+minecraft = "26.2"
+
+paper = "26.2.build.112-stable"
+jspecify = "1.0.0"
+
+run-paper = "3.1.0"
+plugin-yml = "0.9.0"
+
+[libraries]
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
+jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+
+[plugins]
+run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-paper" }
+plugin-yml = { id = "de.eldoria.plugin-yml.paper", version.ref = "plugin-yml" }
