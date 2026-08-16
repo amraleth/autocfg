@@ -18,7 +18,7 @@ the record without you maintaining it by hand.
 Declare the shape of your config:
 
 ```java
-record MyConfig(
+public record MyConfig(
         @ConfigComment("The display name.")
         @DefaultValue("name")
         String name,
@@ -46,7 +46,7 @@ record MyConfig(
         DatabaseConfig database
 ) {
 
-    record DatabaseConfig(
+    public record DatabaseConfig(
             @ConfigComment("The host of the database.")
             @DefaultValue("localhost")
             String host,
