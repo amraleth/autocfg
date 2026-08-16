@@ -8,7 +8,7 @@ val javaVersion = libs.versions.java.get()
 
 allprojects {
     group = "dev.amraleth"
-    version = "1.1.0"
+    version = "1.1.1"
 }
 
 subprojects {

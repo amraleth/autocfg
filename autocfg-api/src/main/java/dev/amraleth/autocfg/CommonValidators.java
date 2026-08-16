@@ -1,6 +1,10 @@
 package dev.amraleth.autocfg;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
 
 import org.jspecify.annotations.NonNull;
 
@@ -131,5 +135,23 @@ public final class CommonValidators {
         if (value.isEmpty()) {
             throw new IllegalArgumentException("%s must not be empty".formatted(name));
         }
+    }
+
+    /**
+     * Checks if a given collection has unique sub-elements.
+     *
+     * @param list The collection to check.
+     * @param key  The key to check for.
+     * @param <T>  The Type of entries in the collection.
+     * @param <K>  The type of the sub-element to check.
+     */
+    public static <T, K> void requireUniqueBy(@NonNull Collection<T> list, @NonNull Function<? super T, ? extends K> key) {
+        Set<K> seen = new HashSet<>();
+        list.forEach(item -> {
+            K value = key.apply(item);
+            if (!seen.add(value)) {
+                throw new IllegalArgumentException("Duplicate value: " + value);
+            }
+        });
     }
 }
