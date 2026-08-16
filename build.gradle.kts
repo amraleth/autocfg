@@ -1,13 +1,14 @@
 plugins {
     alias(libs.plugins.run.paper) apply false
     alias(libs.plugins.plugin.yml) apply false
+    alias(libs.plugins.maven.publish) apply false
 }
 
 val javaVersion = libs.versions.java.get()
 
 allprojects {
     group = "dev.amraleth"
-    version = "1.0.0-RELEASE"
+    version = "1.0.0"
 }
 
 subprojects {
