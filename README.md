@@ -267,7 +267,7 @@ a syntax error in `config.yml` never causes it to be overwritten with defaults.
 ```
 
 `./gradlew :autocfg-test-plugin:runServer` starts a Paper server with the test
-plugin installed. See [RELEASING.md](RELEASING.md) for the publishing process.
+plugin installed.
 
 ## License
 
