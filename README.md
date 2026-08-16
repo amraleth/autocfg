@@ -1,7 +1,7 @@
 # AutoCfg
 
-[![Maven Central](https://img.shields.io/maven-central/v/dev.amraleth/autocfg-api?style=flat-square&logo=apachemaven&color=blue&label=Maven%20Central)](https://central.sonatype.com/artifact/dev.amraleth/autocfg-api)
-[![Javadoc](https://img.shields.io/badge/Javadoc-online-blue?style=flat-square&logo=readthedocs)](https://javadoc.io/doc/dev.amraleth/autocfg-api)
+[![Maven Central](https://img.shields.io/maven-central/v/dev.amraleth/autocfg?style=flat-square&logo=apachemaven&color=blue&label=Maven%20Central)](https://central.sonatype.com/artifact/dev.amraleth/autocfg)
+[![Javadoc](https://img.shields.io/badge/Javadoc-online-blue?style=flat-square&logo=readthedocs)](https://javadoc.io/doc/dev.amraleth/autocfg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-25-orange?style=flat-square&logo=openjdk)](https://openjdk.org/)
 
