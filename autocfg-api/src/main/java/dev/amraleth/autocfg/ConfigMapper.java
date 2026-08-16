@@ -1,5 +1,6 @@
 package dev.amraleth.autocfg;
 
+import dev.amraleth.autocfg.annotation.DefaultEntry;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemoryConfiguration;
 import org.jspecify.annotations.NonNull;
@@ -9,10 +10,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -22,6 +25,12 @@ import java.util.stream.Collectors;
  * @since 1.0.0
  */
 final class ConfigMapper {
+
+    /**
+     * The record types currently being seeded on this thread, guarding against a record that
+     * reaches itself through {@link DefaultEntry}.
+     */
+    private static final ThreadLocal<Set<Class<?>>> SEEDING = ThreadLocal.withInitial(HashSet::new);
 
     private ConfigMapper() {
     }
@@ -77,12 +86,13 @@ final class ConfigMapper {
             return optional(section, path, element, present);
         }
 
+        if (type == List.class && element.filter(Class::isRecord).isPresent()) {
+            return recordList(section, path, element.orElseThrow(), present, component);
+        }
+
         Optional<List<String>> literals = Components.defaults(component);
         if (!present && literals.isEmpty()) {
             throw new IllegalStateException("Missing key %s and no @DefaultValue declared".formatted(path));
-        }
-        if (type == List.class && element.filter(Class::isRecord).isPresent()) {
-            return recordList(section, path, element.orElseThrow(), present, literals);
         }
         try {
             return present
@@ -125,21 +135,36 @@ final class ConfigMapper {
      * Resolves a list of records. Each entry of the list is treated as its own section and read
      * through {@link #read(ConfigurationSection, Class)}.
      *
-     * @param section  The section to resolve from.
-     * @param path     The path of the component.
-     * @param element  The record type of the list entries.
-     * @param present  Whether the key is present in the section.
-     * @param literals The declared default literals, if any.
+     * <p>An absent key yields an empty list, or a single seeded entry if the component declares
+     * {@link DefaultEntry}.
+     *
+     * @param section   The section to resolve from.
+     * @param path      The path of the component.
+     * @param element   The record type of the list entries.
+     * @param present   Whether the key is present in the section.
+     * @param component The component being resolved.
      * @return The resolved list.
-     * @throws IllegalStateException If a non-empty default is declared for a record list.
+     * @throws IllegalStateException If a non-empty default is declared for a record list, or if the
+     *                               key is absent and the component declares neither a default nor
+     *                               {@link DefaultEntry}.
      */
     private static @NonNull List<? extends Record> recordList(@NonNull ConfigurationSection section, @NonNull String path,
                                                               @NonNull Class<?> element, boolean present,
-                                                              @NonNull Optional<List<String>> literals) {
+                                                              @NonNull RecordComponent component) {
         if (!present) {
-            if (!literals.orElseThrow().isEmpty()) {
+            Optional<List<String>> literals = Components.defaults(component);
+            if (literals.filter(declared -> !declared.isEmpty()).isPresent()) {
                 throw new IllegalStateException(
-                        "Record list defaults must be empty; declare the section %s in the file instead".formatted(path));
+                        "Record list defaults must be empty; use @DefaultEntry or declare the section %s in the file"
+                                .formatted(path));
+            }
+            if (component.isAnnotationPresent(DefaultEntry.class)) {
+                return List.of(seed(element.asSubclass(Record.class), path));
+            }
+            if (literals.isEmpty()) {
+                throw new IllegalStateException(
+                        "Missing key %s: declare @DefaultValue({}) for an empty list, or @DefaultEntry to seed one"
+                                .formatted(path));
             }
             return List.of();
         }
@@ -175,6 +200,37 @@ final class ConfigMapper {
             }
         }
         return List.copyOf(records);
+    }
+
+    /**
+     * Builds a single record from its declared defaults alone, by reading it out of an empty
+     * section: every component falls back to its {@link dev.amraleth.autocfg.annotation.DefaultValue},
+     * nested records recurse, and optionals come out empty.
+     *
+     * <p>The record's compact constructor runs as usual, so a default that fails validation fails
+     * the load.
+     *
+     * @param type The record type to seed.
+     * @param path The path of the list being seeded, used for the failure message.
+     * @param <T>  The record type to seed.
+     * @return The seeded record.
+     * @throws IllegalStateException If the record cannot be built without a file, or if seeding
+     *                               cycles back into a type already being seeded.
+     */
+    private static <T extends Record> @NonNull T seed(@NonNull Class<T> type, @NonNull String path) {
+        Set<Class<?>> seeding = SEEDING.get();
+        if (!seeding.add(type)) {
+            throw new IllegalStateException("@DefaultEntry on %s cycles through %s"
+                    .formatted(path, type.getSimpleName()));
+        }
+        try {
+            return read(new MemoryConfiguration(), type);
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException("Cannot seed a default entry for %s: %s"
+                    .formatted(path, exception.getMessage()), exception);
+        } finally {
+            seeding.remove(type);
+        }
     }
 
     /**

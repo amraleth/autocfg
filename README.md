@@ -200,6 +200,7 @@ Missing parent directories are created.
 | Annotation | Applies to | Effect |
 | ---------- | ---------- | ------ |
 | `@DefaultValue` | Record component | The value used when the key is absent, written as text. One literal per list entry. |
+| `@DefaultEntry` | `List<SomeRecord>` component | Seeds the list with one entry built from the element record's defaults when the key is absent. |
 | `@ConfigComment` | Record component, record type | Comment lines rendered above the key. On a type, it applies to every component of that type that carries no comment of its own. |
 | `@ConfigKey` | Record component | Overrides the generated key. Must not be blank or contain `.`. |
 
@@ -215,12 +216,53 @@ default raises `IllegalStateException`.
 - Primitives and their boxes, and `String`
 - Enums - written lowercase, read case-insensitively
 - Nested records, mapped to nested sections
-- `List<T>` of any supported scalar, and `List<SomeRecord>` for repeated sections
+- `List<T>` of any supported scalar, and `List<SomeRecord>` for repeated sections,
+  optionally seeded with an example entry
 - `Optional<T>` - an absent key yields `Optional.empty()` and needs no default
 - `Duration` (ISO-8601), `NamespacedKey`, and `Material`, registered out of the box
 
-A `List<SomeRecord>` must declare `@DefaultValue({})`; a non-empty default for a
-record list is rejected. Declare the entries in the file instead.
+### Record lists
+
+A `List<SomeRecord>` declares one of two things. `@DefaultValue({})` starts the
+list empty, leaving the shape of an entry undocumented in the file. `@DefaultEntry`
+seeds a single entry built from the element record's own `@DefaultValue`s, so a
+fresh file shows what an entry looks like:
+
+```java
+@ConfigComment("The scheduled backups.")
+@DefaultEntry
+List<BackupConfig> backups
+
+record BackupConfig(
+        @DefaultValue("backup")
+        String label,
+
+        @DefaultValue("PT1H")
+        Duration interval
+) { }
+```
+
+```yaml
+# The scheduled backups.
+backups:
+- label: backup
+  interval: PT1H
+```
+
+Every component of a seeded record must be resolvable without a file - a
+`@DefaultValue`, a record whose components are, or an `Optional`.
+
+The entry is seeded only when the key is absent. Once written it reads back as
+ordinary data, so it can be edited, duplicated or removed, and a list left as
+`[]` stays empty. Note that a bare `backups:` with no value parses as null,
+which counts as absent and seeds again; write `backups: []` to keep it empty.
+
+A non-empty `@DefaultValue` on a record list is rejected either way - use
+`@DefaultEntry` or declare the entries in the file.
+
+Bukkit attaches comments to keys, and entries inside a list have none, so
+`@ConfigComment` on the components of a list element record does not render. The
+comment on the list component itself does.
 
 ### Custom types
 

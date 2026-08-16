@@ -3,6 +3,7 @@ package dev.amraleth.autocfg.test;
 import dev.amraleth.autocfg.CommonValidators;
 import dev.amraleth.autocfg.annotation.ConfigComment;
 import dev.amraleth.autocfg.annotation.ConfigKey;
+import dev.amraleth.autocfg.annotation.DefaultEntry;
 import dev.amraleth.autocfg.annotation.DefaultValue;
 import org.bukkit.Material;
 
@@ -39,7 +40,7 @@ record TestConfig(
         DatabaseConfig database,
 
         @ConfigComment("The scheduled backups.")
-        @DefaultValue({})
+        @DefaultEntry
         List<BackupConfig> backups
 ) {
 
