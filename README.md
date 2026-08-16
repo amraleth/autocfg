@@ -117,7 +117,7 @@ repositories {
 }
 
 dependencies {
-    implementation("dev.amraleth:autocfg-api:VERSION")
+    implementation("dev.amraleth:autocfg:VERSION")
 }
 ```
 
@@ -128,12 +128,12 @@ dependencies {
 autocfg = "VERSION"
 
 [libraries]
-autocfg-api = { module = "dev.amraleth:autocfg-api", version.ref = "autocfg" }
+autocfg = { module = "dev.amraleth:autocfg", version.ref = "autocfg" }
 ```
 
 ```kotlin
 dependencies {
-    implementation(libs.autocfg.api)
+    implementation(libs.autocfg)
 }
 ```
 
@@ -142,7 +142,7 @@ dependencies {
 ```xml
 <dependency>
     <groupId>dev.amraleth</groupId>
-    <artifactId>autocfg-api</artifactId>
+    <artifactId>autocfg</artifactId>
     <version>VERSION</version>
 </dependency>
 ```
@@ -159,7 +159,7 @@ on startup:
 
 ```yaml
 libraries:
-  - dev.amraleth:autocfg-api:VERSION
+  - dev.amraleth:autocfg:VERSION
 ```
 
 With the [plugin-yml](https://github.com/eldoriarpg/plugin-yml) Gradle plugin,
@@ -167,7 +167,7 @@ use the `library` configuration and the list is generated for you:
 
 ```kotlin
 dependencies {
-    library("dev.amraleth:autocfg-api:VERSION")
+    library("dev.amraleth:autocfg:VERSION")
 }
 ```
 
