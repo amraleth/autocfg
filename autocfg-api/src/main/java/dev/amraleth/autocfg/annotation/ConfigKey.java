@@ -14,7 +14,7 @@ import java.lang.annotation.Target;
  * {@code
  * @ConfigComment("Some name")
  * @ConfigKey("key")
- * @DefaultValue("Name")
+ * @Default.String("Name")
  * String name
  * }
  * </pre>

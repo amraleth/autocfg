@@ -1,7 +1,9 @@
 package dev.amraleth.autocfg;
 
 import dev.amraleth.autocfg.annotation.DefaultEntry;
-import dev.amraleth.autocfg.annotation.DefaultValue;
+import dev.amraleth.autocfg.annotation.Default;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
@@ -12,6 +14,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -74,9 +77,48 @@ class ConfigLoaderTest {
         assertEquals("Cannot decode marker: Expected a single character, got too long", exception.getMessage());
     }
 
+    @Test
+    void resolvesTypedDefaultsForPrimitivesBoxesAndTextConverters() {
+        ConfigConverters.register(UUID.class, node -> UUID.fromString(node.toString()), UUID::toString);
+
+        TypedDefaults config = ConfigMapper.read(new YamlConfiguration(), TypedDefaults.class);
+
+        assertEquals(true, config.primitiveBoolean());
+        assertEquals(Boolean.FALSE, config.boxedBoolean());
+        assertEquals((byte) 1, config.primitiveByte());
+        assertEquals(Byte.valueOf((byte) 2), config.boxedByte());
+        assertEquals((short) 3, config.primitiveShort());
+        assertEquals(Short.valueOf((short) 4), config.boxedShort());
+        assertEquals(5, config.primitiveInteger());
+        assertEquals(Integer.valueOf(6), config.boxedInteger());
+        assertEquals(7L, config.primitiveLong());
+        assertEquals(Long.valueOf(8L), config.boxedLong());
+        assertEquals(1.5F, config.primitiveFloat());
+        assertEquals(Float.valueOf(2.5F), config.boxedFloat());
+        assertEquals(3.5D, config.primitiveDouble());
+        assertEquals(Double.valueOf(4.5D), config.boxedDouble());
+        assertEquals('z', config.primitiveCharacter());
+        assertEquals(Character.valueOf('q'), config.boxedCharacter());
+        assertEquals(List.of(9, 10), config.integers());
+        assertEquals(Mode.FAST, config.mode());
+        assertEquals(Duration.ofSeconds(30), config.timeout());
+        assertEquals(NamespacedKey.minecraft("stone"), config.key());
+        assertEquals(Material.STONE, config.material());
+        assertEquals(UUID.fromString("3c3c2c9d-196d-43ac-96d8-0f381bf7983e"), config.id());
+        assertEquals(List.of(), config.emptyBackups());
+    }
+
+    @Test
+    void rejectsATypeMismatchedDefault() {
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> ConfigMapper.read(new YamlConfiguration(), MismatchedDefault.class));
+
+        assertEquals("@Default.String on number does not match int", exception.getMessage());
+    }
+
     record ExampleConfig(
-            @DefaultValue("x") char marker,
-            @DefaultValue({"one", "two"}) List<String> labels,
+            @Default.Character('x') char marker,
+            @Default.String({"one", "two"}) List<String> labels,
             DatabaseConfig database,
             @DefaultEntry List<BackupConfig> backups,
             Optional<String> nickname
@@ -84,14 +126,46 @@ class ConfigLoaderTest {
     }
 
     record DatabaseConfig(
-            @DefaultValue("localhost") String host,
-            @DefaultValue("5432") int port
+            @Default.String("localhost") String host,
+            @Default.Integer(5432) int port
     ) {
     }
 
     record BackupConfig(
-            @DefaultValue("backup") String name,
-            @DefaultValue("PT1H") Duration interval
+            @Default.String("backup") String name,
+            @Default.Duration("PT1H") Duration interval
     ) {
+    }
+
+    record TypedDefaults(
+            @Default.Boolean(true) boolean primitiveBoolean,
+            @Default.Boolean(false) Boolean boxedBoolean,
+            @Default.Byte(1) byte primitiveByte,
+            @Default.Byte(2) Byte boxedByte,
+            @Default.Short(3) short primitiveShort,
+            @Default.Short(4) Short boxedShort,
+            @Default.Integer(5) int primitiveInteger,
+            @Default.Integer(6) Integer boxedInteger,
+            @Default.Long(7) long primitiveLong,
+            @Default.Long(8) Long boxedLong,
+            @Default.Float(1.5F) float primitiveFloat,
+            @Default.Float(2.5F) Float boxedFloat,
+            @Default.Double(3.5D) double primitiveDouble,
+            @Default.Double(4.5D) Double boxedDouble,
+            @Default.Character('z') char primitiveCharacter,
+            @Default.Character('q') Character boxedCharacter,
+            @Default.Integer({9, 10}) List<Integer> integers,
+            @Default.Enum("fast") Mode mode,
+            @Default.Duration("PT30S") Duration timeout,
+            @Default.NamespacedKey("minecraft:stone") NamespacedKey key,
+            @Default.Material("stone") Material material,
+            @Default.Text("3c3c2c9d-196d-43ac-96d8-0f381bf7983e") UUID id,
+            @Default.Empty List<BackupConfig> emptyBackups
+    ) {
+    }
+
+    enum Mode {FAST, SLOW}
+
+    record MismatchedDefault(@Default.String("one") int number) {
     }
 }

@@ -21,7 +21,8 @@ final class Values {
     /**
      * The box type of each primitive.
      */
-    private static final @NonNull @Unmodifiable Map<Class<?>, Class<?>> BOXES = Map.of(
+    private static final @NonNull
+    @Unmodifiable Map<Class<?>, Class<?>> BOXES = Map.of(
             int.class, Integer.class,
             long.class, Long.class,
             double.class, Double.class,
@@ -56,23 +57,23 @@ final class Values {
     }
 
     /**
-     * Converts text to a value.
+     * Converts typed annotation defaults to a value.
      *
-     * @param literals The literals to convert.
-     * @param target   The target class to convert.
-     * @param element  The element to convert.
+     * @param values  The values to convert.
+     * @param target  The target class to convert.
+     * @param element The element to convert.
      * @return The value.
      * @throws IllegalArgumentException If more than one default value is supplied and the target is not a list.
      */
-    static @NonNull Object fromText(@NonNull @Unmodifiable List<String> literals, @NonNull Class<?> target,
-                                    @NonNull Optional<Class<?>> element) {
+    static @NonNull Object fromDefaults(@NonNull @Unmodifiable List<Object> values, @NonNull Class<?> target,
+                                        @NonNull Optional<Class<?>> element) {
         if (target == List.class) {
-            return literals.stream().map(literal -> parse(literal, element(element))).toList();
+            return values.stream().map(value -> scalar(value, element(element))).toList();
         }
-        if (literals.size() != 1) {
-            throw new IllegalArgumentException("Expected a single default literal, got " + literals.size());
+        if (values.size() != 1) {
+            throw new IllegalArgumentException("Expected a single default value, got " + values.size());
         }
-        return parse(literals.getFirst(), target);
+        return scalar(values.getFirst(), target);
     }
 
     /**
@@ -190,38 +191,6 @@ final class Values {
     }
 
     /**
-     * Parses a primitive literal.
-     *
-     * @param literal The literal.
-     * @param target  The target to parse to.
-     * @return The primitive.
-     */
-    private static @NonNull Object parse(@NonNull String literal, @NonNull Class<?> target) {
-        if (target == int.class || target == Integer.class) {
-            return Integer.parseInt(literal);
-        }
-        if (target == long.class || target == Long.class) {
-            return Long.parseLong(literal);
-        }
-        if (target == double.class || target == Double.class) {
-            return Double.parseDouble(literal);
-        }
-        if (target == float.class || target == Float.class) {
-            return Float.parseFloat(literal);
-        }
-        if (target == short.class || target == Short.class) {
-            return Short.parseShort(literal);
-        }
-        if (target == byte.class || target == Byte.class) {
-            return Byte.parseByte(literal);
-        }
-        if (target == boolean.class || target == Boolean.class) {
-            return bool(literal);
-        }
-        return scalar(literal, target);
-    }
-
-    /**
      * Parses a single character.
      *
      * @param literal The literal to parse.
@@ -233,23 +202,6 @@ final class Values {
             throw new IllegalArgumentException("Expected a single character, got " + literal);
         }
         return literal.charAt(0);
-    }
-
-    /**
-     * Parses a boolean.
-     *
-     * @param literal The literal to parse.
-     * @return The boolean.
-     * @throws IllegalArgumentException If the value is neither true nor false.
-     */
-    private static boolean bool(@NonNull String literal) {
-        if ("true".equalsIgnoreCase(literal)) {
-            return true;
-        }
-        if ("false".equalsIgnoreCase(literal)) {
-            return false;
-        }
-        throw new IllegalArgumentException("Expected true or false, got " + literal);
     }
 
     /**

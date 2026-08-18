@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
  * <pre>
  * {@code
  * @ConfigComment("Some name")
- * @DefaultValue("Name")
+ * @Default.String("Name")
  * String name
  * }
  * </pre>

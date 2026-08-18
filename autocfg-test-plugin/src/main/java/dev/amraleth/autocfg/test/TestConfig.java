@@ -4,7 +4,7 @@ import dev.amraleth.autocfg.CommonValidators;
 import dev.amraleth.autocfg.annotation.ConfigComment;
 import dev.amraleth.autocfg.annotation.ConfigKey;
 import dev.amraleth.autocfg.annotation.DefaultEntry;
-import dev.amraleth.autocfg.annotation.DefaultValue;
+import dev.amraleth.autocfg.annotation.Default;
 import org.bukkit.Material;
 
 import java.time.Duration;
@@ -13,26 +13,26 @@ import java.util.Optional;
 
 record TestConfig(
         @ConfigComment("The display name.")
-        @DefaultValue("name")
+        @Default.String("name")
         String name,
 
         @ConfigComment("The material to place.")
-        @DefaultValue("stone")
+        @Default.Material("stone")
         Material material,
 
         @ConfigComment("The materials to accept.")
-        @DefaultValue({"stone", "dirt"})
+        @Default.Material({"stone", "dirt"})
         List<Material> materials,
 
         @ConfigComment("An alternate display name.")
         Optional<String> nickname,
 
         @ConfigComment("How long to wait, as an ISO-8601 duration.")
-        @DefaultValue("PT30S")
+        @Default.Duration("PT30S")
         Duration timeout,
 
         @ConfigComment("How often to retry a failed HTTP request.")
-        @DefaultValue("3")
+        @Default.Integer(3)
         int maxHTTPRetries,
 
         @ConfigComment("Database configuration.")
@@ -46,11 +46,11 @@ record TestConfig(
 
     record DatabaseConfig(
             @ConfigComment("The host of the database.")
-            @DefaultValue("localhost")
+            @Default.String("localhost")
             String host,
 
             @ConfigComment("The port of the database.")
-            @DefaultValue("4242")
+            @Default.Integer(4242)
             int port
     ) {
 
@@ -61,10 +61,10 @@ record TestConfig(
     }
 
     record BackupConfig(
-            @DefaultValue("backup")
+            @Default.String("backup")
             String label,
 
-            @DefaultValue("PT1H")
+            @Default.Duration("PT1H")
             Duration interval
     ) {
     }

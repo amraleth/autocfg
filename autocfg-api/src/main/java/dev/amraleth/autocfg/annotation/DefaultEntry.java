@@ -7,8 +7,8 @@ import java.lang.annotation.Target;
 
 /**
  * Seeds a record list with a single entry built from the element record's defaults. The record list
- * analogue of {@link DefaultValue}, and only meaningful on a {@code List<SomeRecord>} component,
- * where it replaces the {@code @DefaultValue({})} that such a component otherwise requires.
+ * analogue of {@link Default.Empty}, and only meaningful on a {@code List<SomeRecord>} component,
+ * where it replaces the {@code @Default.Empty} that such a component otherwise requires.
  *
  * <pre>
  * {@code
@@ -17,10 +17,10 @@ import java.lang.annotation.Target;
  * List<BackupConfig> backups
  *
  * record BackupConfig(
- *         @DefaultValue("backup")
+ *         @Default.String("backup")
  *         String label,
  *
- *         @DefaultValue("PT1H")
+ *         @Default.Duration("PT1H")
  *         Duration interval
  * ) { }
  * }
@@ -39,7 +39,7 @@ import java.lang.annotation.Target;
  * ordinary data, so it can be edited, duplicated or removed; a list left as {@code []} stays empty.
  *
  * <p>Every component of the element record must be resolvable without a file, that is carry a
- * {@link DefaultValue}, be a record whose components are, or be an {@link java.util.Optional}.
+ * a {@link Default} annotation, be a record whose components are, or be an {@link java.util.Optional}.
  *
  * @author amraleth
  * @since 1.1.0

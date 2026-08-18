@@ -2,16 +2,21 @@ package dev.amraleth.autocfg;
 
 import dev.amraleth.autocfg.annotation.ConfigComment;
 import dev.amraleth.autocfg.annotation.ConfigKey;
-import dev.amraleth.autocfg.annotation.DefaultValue;
+import dev.amraleth.autocfg.annotation.Default;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.jspecify.annotations.NonNull;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * Private helpers for working with configuration components.
@@ -78,9 +83,91 @@ final class Components {
      * @param component The component.
      * @return A list of all default values.
      */
-    static @NonNull Optional<List<String>> defaults(@NonNull RecordComponent component) {
-        return Optional.ofNullable(component.getAnnotation(DefaultValue.class))
-                .map(annotation -> List.of(annotation.value()));
+    static @NonNull Optional<List<Object>> defaults(@NonNull RecordComponent component) {
+        List<DefaultValues> declared = new ArrayList<>();
+        add(declared, component.getAnnotation(Default.Boolean.class), boolean.class, Default.Boolean::value, "@Default.Boolean");
+        add(declared, component.getAnnotation(Default.Byte.class), byte.class, Default.Byte::value, "@Default.Byte");
+        add(declared, component.getAnnotation(Default.Short.class), short.class, Default.Short::value, "@Default.Short");
+        add(declared, component.getAnnotation(Default.Integer.class), int.class, Default.Integer::value, "@Default.Integer");
+        add(declared, component.getAnnotation(Default.Long.class), long.class, Default.Long::value, "@Default.Long");
+        add(declared, component.getAnnotation(Default.Float.class), float.class, Default.Float::value, "@Default.Float");
+        add(declared, component.getAnnotation(Default.Double.class), double.class, Default.Double::value, "@Default.Double");
+        add(declared, component.getAnnotation(Default.Character.class), char.class, Default.Character::value, "@Default.Character");
+        add(declared, component.getAnnotation(Default.String.class), String.class, Default.String::value, "@Default.String");
+        add(declared, component.getAnnotation(Default.Enum.class), Enum.class, Default.Enum::value, "@Default.Enum");
+        add(declared, component.getAnnotation(Default.Duration.class), java.time.Duration.class, Default.Duration::value, "@Default.Duration");
+        add(declared, component.getAnnotation(Default.NamespacedKey.class), NamespacedKey.class, Default.NamespacedKey::value, "@Default.NamespacedKey");
+        add(declared, component.getAnnotation(Default.Material.class), Material.class, Default.Material::value, "@Default.Material");
+        add(declared, component.getAnnotation(Default.Text.class), null, Default.Text::value, "@Default.Text");
+        if (component.isAnnotationPresent(Default.Empty.class)) {
+            declared.add(new DefaultValues(null, List.of(), "@Default.Empty"));
+        }
+        if (declared.size() > 1) {
+            throw new IllegalStateException("Multiple defaults declared on %s".formatted(component.getName()));
+        }
+        if (declared.isEmpty()) {
+            return Optional.empty();
+        }
+        DefaultValues defaults = declared.getFirst();
+        validate(component, defaults);
+        return Optional.of(defaults.values());
+    }
+
+    private static <A extends java.lang.annotation.Annotation> void add(@NonNull List<DefaultValues> defaults,
+                                                                        A annotation, Class<?> type,
+                                                                        Function<A, Object> values, String name) {
+        if (annotation != null) {
+            defaults.add(new DefaultValues(type, array(values.apply(annotation)), name));
+        }
+    }
+
+    private static @NonNull List<Object> array(@NonNull Object array) {
+        List<Object> values = new ArrayList<>(Array.getLength(array));
+        for (int index = 0; index < Array.getLength(array); index++) {
+            values.add(Array.get(array, index));
+        }
+        return List.copyOf(values);
+    }
+
+    private static void validate(@NonNull RecordComponent component, @NonNull DefaultValues defaults) {
+        if ("@Default.Empty".equals(defaults.name())) {
+            if (component.getType() != List.class || element(component).filter(Class::isRecord).isEmpty()) {
+                throw new IllegalStateException("@Default.Empty on %s requires List<SomeRecord>"
+                        .formatted(component.getName()));
+            }
+            return;
+        }
+        Class<?> actual = component.getType() == List.class
+                ? element(component).orElseThrow(() -> new IllegalStateException(
+                "List component %s has no resolvable element type".formatted(component.getName())))
+                : component.getType();
+        Class<?> expected = defaults.type();
+        if (expected == null && actual.isRecord()) {
+            throw new IllegalStateException("%s on %s cannot default a record"
+                    .formatted(defaults.name(), component.getName()));
+        }
+        if (expected == null || (expected == Enum.class && actual.isEnum()) || boxed(expected) == boxed(actual)) {
+            return;
+        }
+        throw new IllegalStateException("%s on %s does not match %s"
+                .formatted(defaults.name(), component.getName(), actual.getSimpleName()));
+    }
+
+    private static @NonNull Class<?> boxed(@NonNull Class<?> type) {
+        return switch (type.getName()) {
+            case "boolean" -> Boolean.class;
+            case "byte" -> Byte.class;
+            case "short" -> Short.class;
+            case "int" -> Integer.class;
+            case "long" -> Long.class;
+            case "float" -> Float.class;
+            case "double" -> Double.class;
+            case "char" -> Character.class;
+            default -> type;
+        };
+    }
+
+    private record DefaultValues(Class<?> type, List<Object> values, String name) {
     }
 
     /**
@@ -108,7 +195,7 @@ final class Components {
      *
      * @param component The component.
      * @return An optional class. Empty if the component is not generic, or if its type argument is
-     *         itself generic.
+     * itself generic.
      */
     static @NonNull Optional<Class<?>> element(@NonNull RecordComponent component) {
         return component.getGenericType() instanceof ParameterizedType type

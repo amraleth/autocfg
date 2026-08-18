@@ -90,14 +90,14 @@ final class ConfigMapper {
             return recordList(section, path, element.orElseThrow(), present, component);
         }
 
-        Optional<List<String>> literals = Components.defaults(component);
-        if (!present && literals.isEmpty()) {
-            throw new IllegalStateException("Missing key %s and no @DefaultValue declared".formatted(path));
+        Optional<List<Object>> defaults = Components.defaults(component);
+        if (!present && defaults.isEmpty()) {
+            throw new IllegalStateException("Missing key %s and no @Default annotation declared".formatted(path));
         }
         try {
             return present
                     ? Values.fromNode(Objects.requireNonNull(section.get(path)), type, element)
-                    : Values.fromText(literals.orElseThrow(), type, element);
+                    : Values.fromDefaults(defaults.orElseThrow(), type, element);
         } catch (RuntimeException exception) {
             throw decode(path, exception);
         }
@@ -105,7 +105,7 @@ final class ConfigMapper {
 
     /**
      * Resolves an {@link Optional} component. An absent key yields an empty optional; no
-     * {@link dev.amraleth.autocfg.annotation.DefaultValue} is required.
+     * {@link dev.amraleth.autocfg.annotation.Default} annotation is required.
      *
      * @param section The section to resolve from.
      * @param path    The path of the component.
@@ -152,8 +152,8 @@ final class ConfigMapper {
                                                               @NonNull Class<?> element, boolean present,
                                                               @NonNull RecordComponent component) {
         if (!present) {
-            Optional<List<String>> literals = Components.defaults(component);
-            if (literals.filter(declared -> !declared.isEmpty()).isPresent()) {
+            Optional<List<Object>> defaults = Components.defaults(component);
+            if (defaults.filter(declared -> !declared.isEmpty()).isPresent()) {
                 throw new IllegalStateException(
                         "Record list defaults must be empty; use @DefaultEntry or declare the section %s in the file"
                                 .formatted(path));
@@ -161,9 +161,9 @@ final class ConfigMapper {
             if (component.isAnnotationPresent(DefaultEntry.class)) {
                 return List.of(seed(element.asSubclass(Record.class), path));
             }
-            if (literals.isEmpty()) {
+            if (defaults.isEmpty()) {
                 throw new IllegalStateException(
-                        "Missing key %s: declare @DefaultValue({}) for an empty list, or @DefaultEntry to seed one"
+                        "Missing key %s: declare @Default.Empty for an empty list, or @DefaultEntry to seed one"
                                 .formatted(path));
             }
             return List.of();
@@ -204,7 +204,7 @@ final class ConfigMapper {
 
     /**
      * Builds a single record from its declared defaults alone, by reading it out of an empty
-     * section: every component falls back to its {@link dev.amraleth.autocfg.annotation.DefaultValue},
+     * section: every component falls back to its {@link dev.amraleth.autocfg.annotation.Default} annotation,
      * nested records recurse, and optionals come out empty.
      *
      * <p>The record's compact constructor runs as usual, so a default that fails validation fails

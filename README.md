@@ -20,26 +20,26 @@ Declare the shape of your config:
 ```java
 public record MyConfig(
         @ConfigComment("The display name.")
-        @DefaultValue("name")
+        @Default.String("name")
         String name,
 
         @ConfigComment("The material to place.")
-        @DefaultValue("stone")
+        @Default.Material("stone")
         Material material,
 
         @ConfigComment("The materials to accept.")
-        @DefaultValue({"stone", "dirt"})
+        @Default.Material({"stone", "dirt"})
         List<Material> materials,
 
         @ConfigComment("An alternate display name.")
         Optional<String> nickname,
 
         @ConfigComment("How long to wait, as an ISO-8601 duration.")
-        @DefaultValue("PT30S")
+        @Default.Duration("PT30S")
         Duration timeout,
 
         @ConfigComment("How often to retry a failed HTTP request.")
-        @DefaultValue("3")
+        @Default.Integer(3)
         int maxHTTPRetries,
 
         @ConfigComment("Database configuration.")
@@ -48,11 +48,11 @@ public record MyConfig(
 
     public record DatabaseConfig(
             @ConfigComment("The host of the database.")
-            @DefaultValue("localhost")
+            @Default.String("localhost")
             String host,
 
             @ConfigComment("The port of the database.")
-            @DefaultValue("4242")
+            @Default.Integer(4242)
             int port
     ) {
         DatabaseConfig {
@@ -209,7 +209,7 @@ Missing parent directories are created.
 
 | Annotation | Applies to | Effect |
 | ---------- | ---------- | ------ |
-| `@DefaultValue` | Record component | The value used when the key is absent, written as text. One literal per list entry. |
+| `@Default.*` | Record component | A typed default used when the key is absent. Each annotation also accepts multiple values for a `List`. |
 | `@DefaultEntry` | `List<SomeRecord>` component | Seeds the list with one entry built from the element record's defaults when the key is absent. |
 | `@ConfigComment` | Record component, record type | Comment lines rendered above the key. On a type, it applies to every component of that type that carries no comment of its own. |
 | `@ConfigKey` | Record component | Overrides the generated key. Must not be blank or contain `.`. |
@@ -217,25 +217,32 @@ Missing parent directories are created.
 Keys are derived from component names in kebab-case, splitting acronyms at
 their trailing boundary - `maxHTTPRetries` becomes `max-http-retries`.
 
-`@DefaultValue` is required on every component that is not a record, a record
+One `@Default.*` annotation is required on every component that is not a record, a record
 list or an `Optional`. A component with neither a value in the file nor a
 default raises `IllegalStateException`.
 
+Use the annotation that matches the component type: `Boolean`, `Byte`, `Short`,
+`Integer`, `Long`, `Float`, `Double`, `Character`, or `String` for primitives,
+their boxes, and strings; `Enum`, `Duration`, `NamespacedKey`, or `Material` for
+the built-ins; and `Text` for a consumer-registered converter. Each accepts an
+array for a `List<T>` component. `Empty` is reserved for an empty `List<Record>`.
+
 ### Supported types
 
-- Primitives and their boxes, and `String`
+- Primitives and their boxes, and `String` (`@Default.Boolean`, `@Default.Integer`, and so on)
 - Enums - written lowercase, read case-insensitively
 - Nested records, mapped to nested sections
 - `List<T>` of any supported scalar, and `List<SomeRecord>` for repeated sections,
   optionally seeded with an example entry
 - `Optional<T>` - an absent key yields `Optional.empty()` and needs no default
-- `Duration` (ISO-8601), `NamespacedKey`, and `Material`, registered out of the box
+- `Duration` (ISO-8601), `NamespacedKey`, and `Material`, with corresponding typed annotations
+- Consumer-registered converters via `@Default.Text`
 
 ### Record lists
 
-A `List<SomeRecord>` declares one of two things. `@DefaultValue({})` starts the
+A `List<SomeRecord>` declares one of two things. `@Default.Empty` starts the
 list empty, leaving the shape of an entry undocumented in the file. `@DefaultEntry`
-seeds a single entry built from the element record's own `@DefaultValue`s, so a
+seeds a single entry built from the element record's own `@Default.*` annotations, so a
 fresh file shows what an entry looks like:
 
 ```java
@@ -244,10 +251,10 @@ fresh file shows what an entry looks like:
 List<BackupConfig> backups
 
 record BackupConfig(
-        @DefaultValue("backup")
+        @Default.String("backup")
         String label,
 
-        @DefaultValue("PT1H")
+        @Default.Duration("PT1H")
         Duration interval
 ) { }
 ```
@@ -260,14 +267,14 @@ backups:
 ```
 
 Every component of a seeded record must be resolvable without a file - a
-`@DefaultValue`, a record whose components are, or an `Optional`.
+`@Default.*`, a record whose components are, or an `Optional`.
 
 The entry is seeded only when the key is absent. Once written it reads back as
 ordinary data, so it can be edited, duplicated or removed, and a list left as
 `[]` stays empty. Note that a bare `backups:` with no value parses as null,
 which counts as absent and seeds again; write `backups: []` to keep it empty.
 
-A non-empty `@DefaultValue` on a record list is rejected either way - use
+A non-empty `@Default.*` annotation on a record list is rejected either way - use
 `@DefaultEntry` or declare the entries in the file.
 
 Bukkit attaches comments to keys, and entries inside a list have none, so
@@ -292,9 +299,19 @@ a copy loaded through `libraries` is shared across every plugin using it.
 
 Validate in the record's compact constructor. Exceptions thrown there propagate
 out of the loader unchanged, so a bad value fails the load with your own
-message. `CommonValidators` covers the usual cases: `intRange`,
-`intRangeExclusive`, `doubleRange`, `portRange`, `positive`, `notBlank` and
-`notEmpty`.
+message. `CommonValidators` covers the usual cases: `intRange`, `longRange`,
+`doubleRange`, `positive`, `nonNegative`, `finite`, `notNull`, `notBlank`,
+`lengthRange`, `matches`, `notEmpty`, `sizeRange`, `requireUnique`, and
+`requireUniqueBy`.
+
+Every validator returns a stateless `CommonValidators.Chain`, so several
+independent checks can be written as one fluent sequence:
+
+```java
+CommonValidators.requireUnique(rules)
+        .nonBlank(name, "name")
+        .positive(maxRetries, "maxRetries");
+```
 
 ### Failures
 
