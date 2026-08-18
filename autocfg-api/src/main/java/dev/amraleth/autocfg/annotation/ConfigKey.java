@@ -1,6 +1,5 @@
 package dev.amraleth.autocfg.annotation;
 
-import org.jspecify.annotations.NonNull;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -39,6 +38,6 @@ public @interface ConfigKey {
      *
      * @return The configuration key. Must not be blank or contain {@code '.'}.
      */
-    @NonNull String value();
+    String value();
 
 }

@@ -194,6 +194,14 @@ writing, typed defaults, and validators:
 
 ## Reference
 
+### Migrating from `@DefaultValue`
+
+`@DefaultValue` remains supported but is deprecated. Existing configurations
+continue to load unchanged. New records should use the matching typed
+`@Default.*` annotation, for example `@DefaultValue("3")` becomes
+`@Default.Integer(3)`, and `@DefaultValue("PT30S")` becomes
+`@Default.Duration("PT30S")`.
+
 ### Loading
 
 | Call                                           | File                                                                     |
@@ -205,6 +213,24 @@ writing, typed defaults, and validators:
 
 Every call reads the file, fills in whatever is missing, and saves it back.
 Missing parent directories are created.
+
+### Schema evolution
+
+The default loader preserves unknown keys. Use `ConfigLoadOptions` when a
+configuration needs explicit migration or a stricter unknown-key policy:
+
+```java
+ConfigLoadOptions options = new ConfigLoadOptions(
+        UnknownKeyPolicy.WARN,
+        List.of(config -> config.set("schema-version", 2)),
+        key -> plugin.getLogger().warning("Unknown config key: " + key)
+);
+MyConfig config = ConfigLoader.load(file, MyConfig.class, options);
+```
+
+`PRESERVE` keeps unknown root keys, `WARN` reports them to the listener, and
+`REMOVE` deletes them before saving. Migration hooks run after YAML parsing and
+before AutoCfg maps the document to the record.
 
 ### Annotations
 

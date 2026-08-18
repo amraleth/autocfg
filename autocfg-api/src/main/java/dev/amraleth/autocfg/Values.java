@@ -8,7 +8,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.jetbrains.annotations.Unmodifiable;
-import org.jspecify.annotations.NonNull;
 
 /**
  * Helper functions for dealing with values.
@@ -21,8 +20,7 @@ final class Values {
     /**
      * The box type of each primitive.
      */
-    private static final @NonNull
-    @Unmodifiable Map<Class<?>, Class<?>> BOXES = Map.of(
+    private static final @Unmodifiable Map<Class<?>, Class<?>> BOXES = Map.of(
             int.class, Integer.class,
             long.class, Long.class,
             double.class, Double.class,
@@ -32,6 +30,9 @@ final class Values {
             boolean.class, Boolean.class,
             char.class, Character.class);
 
+    /**
+     * Prevents instantiation of this utility class.
+     */
     private Values() {
     }
 
@@ -44,7 +45,7 @@ final class Values {
      * @return The value.
      * @throws IllegalArgumentException If the node cannot be represented as the target type.
      */
-    static @NonNull Object fromNode(@NonNull Object node, @NonNull Class<?> target, @NonNull Optional<Class<?>> element) {
+    static Object fromNode(Object node, Class<?> target, Optional<Class<?>> element) {
         if (target != List.class) {
             return scalar(node, target);
         }
@@ -65,8 +66,8 @@ final class Values {
      * @return The value.
      * @throws IllegalArgumentException If more than one default value is supplied and the target is not a list.
      */
-    static @NonNull Object fromDefaults(@NonNull @Unmodifiable List<Object> values, @NonNull Class<?> target,
-                                        @NonNull Optional<Class<?>> element) {
+    static Object fromDefaults(@Unmodifiable List<Object> values, Class<?> target,
+                               Optional<Class<?>> element) {
         if (target == List.class) {
             return values.stream().map(value -> scalar(value, element(element))).toList();
         }
@@ -77,12 +78,68 @@ final class Values {
     }
 
     /**
+     * Converts deprecated {@code @DefaultValue} literals using the legacy text parsing rules.
+     *
+     * @param literals The legacy literals to convert.
+     * @param target   The target class.
+     * @param element  The list element type, when applicable.
+     * @return The converted value.
+     * @throws IllegalArgumentException If the literals cannot represent the target type.
+     */
+    static Object fromLegacyText(@Unmodifiable List<String> literals,
+                                 Class<?> target, Optional<Class<?>> element) {
+        if (target == List.class) {
+            return literals.stream().map(literal -> parseLegacy(literal, element(element))).toList();
+        }
+        if (literals.size() != 1) {
+            throw new IllegalArgumentException("Expected a single default literal, got " + literals.size());
+        }
+        return parseLegacy(literals.getFirst(), target);
+    }
+
+    /**
+     * Parses one legacy text literal to its requested target type.
+     *
+     * @param literal The literal to parse.
+     * @param target  The target type.
+     * @return The converted value.
+     * @throws IllegalArgumentException If the literal cannot represent the target type.
+     */
+    private static Object parseLegacy(String literal, Class<?> target) {
+        if (target == int.class || target == Integer.class) {
+            return Integer.parseInt(literal);
+        }
+        if (target == long.class || target == Long.class) {
+            return Long.parseLong(literal);
+        }
+        if (target == double.class || target == Double.class) {
+            return Double.parseDouble(literal);
+        }
+        if (target == float.class || target == Float.class) {
+            return Float.parseFloat(literal);
+        }
+        if (target == short.class || target == Short.class) {
+            return Short.parseShort(literal);
+        }
+        if (target == byte.class || target == Byte.class) {
+            return Byte.parseByte(literal);
+        }
+        if (target == boolean.class || target == Boolean.class) {
+            if ("true".equalsIgnoreCase(literal) || "false".equalsIgnoreCase(literal)) {
+                return Boolean.parseBoolean(literal);
+            }
+            throw new IllegalArgumentException("Expected true or false, got " + literal);
+        }
+        return scalar(literal, target);
+    }
+
+    /**
      * Converts a value to a node.
      *
      * @param value The value.
      * @return The node.
      */
-    static @NonNull Object toNode(@NonNull Object value) {
+    static Object toNode(Object value) {
         if (value instanceof List<?> list) {
             return list.stream().map(Values::toNode).toList();
         }
@@ -99,7 +156,7 @@ final class Values {
      * @param value The value.
      * @return The declaring class.
      */
-    private static @NonNull Class<?> declaring(@NonNull Object value) {
+    private static Class<?> declaring(Object value) {
         return value instanceof Enum<?> constant ? constant.getDeclaringClass() : value.getClass();
     }
 
@@ -110,7 +167,7 @@ final class Values {
      * @return The element class.
      * @throws IllegalStateException If the element is a list component and has no resolvable element types.
      */
-    private static @NonNull Class<?> element(@NonNull Optional<Class<?>> element) {
+    private static Class<?> element(Optional<Class<?>> element) {
         return element.orElseThrow(() ->
                 new IllegalStateException("List component has no resolvable element type"));
     }
@@ -127,7 +184,7 @@ final class Values {
      * @throws IllegalArgumentException If the node cannot be represented as the target type.
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static @NonNull Object scalar(@NonNull Object node, @NonNull Class<?> target) {
+    private static Object scalar(Object node, Class<?> target) {
         if (target == char.class || target == Character.class) {
             return character(node.toString());
         }
@@ -155,7 +212,7 @@ final class Values {
      * @param target The target class.
      * @return The boxed class.
      */
-    private static @NonNull Class<?> box(@NonNull Class<?> target) {
+    private static Class<?> box(Class<?> target) {
         return BOXES.getOrDefault(target, target);
     }
 
@@ -168,7 +225,7 @@ final class Values {
      * @throws IllegalArgumentException If the literal is not part of the enum.
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static @NonNull Object constant(@NonNull Class<Enum> target, @NonNull String literal) {
+    private static Object constant(Class<Enum> target, String literal) {
         try {
             return Enum.valueOf(target, literal.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
@@ -183,7 +240,7 @@ final class Values {
      * @param target The target enum.
      * @return A names concatenated to a list.
      */
-    private static @NonNull String names(@NonNull Class<?> target) {
+    private static String names(Class<?> target) {
         return Arrays.stream(target.getEnumConstants())
                 .limit(20)
                 .map(constant -> ((Enum<?>) constant).name().toLowerCase(Locale.ROOT))
@@ -197,7 +254,7 @@ final class Values {
      * @return The character.
      * @throws IllegalArgumentException If the literal does not contain exactly one character.
      */
-    private static char character(@NonNull String literal) {
+    private static char character(String literal) {
         if (literal.length() != 1) {
             throw new IllegalArgumentException("Expected a single character, got " + literal);
         }
@@ -211,7 +268,7 @@ final class Values {
      * @param target The target to widen to.
      * @return The widened value.
      */
-    private static @NonNull Object widen(@NonNull Number value, @NonNull Class<?> target) {
+    private static Object widen(Number value, Class<?> target) {
         if (target == int.class || target == Integer.class) {
             return value.intValue();
         }

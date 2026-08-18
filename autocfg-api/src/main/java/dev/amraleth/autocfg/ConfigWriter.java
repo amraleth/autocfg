@@ -1,7 +1,6 @@
 package dev.amraleth.autocfg;
 
 import org.bukkit.configuration.ConfigurationSection;
-import org.jspecify.annotations.NonNull;
 
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
@@ -18,6 +17,9 @@ import java.util.Optional;
  */
 final class ConfigWriter {
 
+    /**
+     * Prevents instantiation of this utility class.
+     */
     private ConfigWriter() {
     }
 
@@ -27,7 +29,7 @@ final class ConfigWriter {
      * @param section The section to write to.
      * @param source  The source to write from.
      */
-    static void write(@NonNull ConfigurationSection section, @NonNull Record source) {
+    static void write(ConfigurationSection section, Record source) {
         write(section, source, "");
     }
 
@@ -38,7 +40,7 @@ final class ConfigWriter {
      * @param source  The source to write from.
      * @param prefix  The prefix to use.
      */
-    static void write(@NonNull ConfigurationSection section, @NonNull Record source, @NonNull String prefix) {
+    static void write(ConfigurationSection section, Record source, String prefix) {
         Arrays.stream(source.getClass().getRecordComponents())
                 .forEach(component -> writeComponent(section, component, source, prefix));
     }
@@ -51,8 +53,8 @@ final class ConfigWriter {
      * @param source    The source record.
      * @param prefix    The prefix to use.
      */
-    static void writeComponent(@NonNull ConfigurationSection section, @NonNull RecordComponent component,
-                               @NonNull Record source, @NonNull String prefix) {
+    static void writeComponent(ConfigurationSection section, RecordComponent component,
+                               Record source, String prefix) {
         String path = Components.path(prefix, component);
         Object value = Components.value(component, source);
         if (component.getType().isRecord()) {
@@ -74,7 +76,7 @@ final class ConfigWriter {
      * @param path    The path to write to.
      * @param value   The optional value.
      */
-    private static void writeOptional(@NonNull ConfigurationSection section, @NonNull String path, @NonNull Optional<?> value) {
+    private static void writeOptional(ConfigurationSection section, String path, Optional<?> value) {
         Object inner = value.orElse(null);
         if (inner == null) {
             section.set(path, null);
@@ -92,7 +94,7 @@ final class ConfigWriter {
      * @param section The section to write to.
      * @param path    The path the section should exist at.
      */
-    private static void section(@NonNull ConfigurationSection section, @NonNull String path) {
+    private static void section(ConfigurationSection section, String path) {
         if (!section.isConfigurationSection(path)) {
             section.createSection(path);
         }
@@ -104,7 +106,7 @@ final class ConfigWriter {
      * @param value The value.
      * @return The node.
      */
-    private static @NonNull Object node(@NonNull Object value) {
+    private static Object node(Object value) {
         if (value instanceof Record record) {
             return toMap(record);
         }
@@ -123,7 +125,7 @@ final class ConfigWriter {
      * @param source The record to convert.
      * @return The record as a map.
      */
-    private static @NonNull Map<String, Object> toMap(@NonNull Record source) {
+    private static Map<String, Object> toMap(Record source) {
         Map<String, Object> map = new LinkedHashMap<>();
         for (RecordComponent component : source.getClass().getRecordComponents()) {
             String key = Components.path("", component);
@@ -144,7 +146,7 @@ final class ConfigWriter {
      * @param path      The path to use.
      * @param component The component to write from.
      */
-    static void comment(@NonNull ConfigurationSection section, @NonNull String path, @NonNull RecordComponent component) {
+    static void comment(ConfigurationSection section, String path, RecordComponent component) {
         if (!section.contains(path)) {
             return;
         }

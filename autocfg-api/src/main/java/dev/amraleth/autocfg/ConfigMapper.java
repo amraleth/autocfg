@@ -3,7 +3,7 @@ package dev.amraleth.autocfg;
 import dev.amraleth.autocfg.annotation.DefaultEntry;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemoryConfiguration;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -32,6 +32,9 @@ final class ConfigMapper {
      */
     private static final ThreadLocal<Set<Class<?>>> SEEDING = ThreadLocal.withInitial(HashSet::new);
 
+    /**
+     * Prevents instantiation of this utility class.
+     */
     private ConfigMapper() {
     }
 
@@ -43,7 +46,7 @@ final class ConfigMapper {
      * @param <T>     The type of the type class.
      * @return An instance of the type.
      */
-    static <T extends Record> @NonNull T read(@NonNull ConfigurationSection section, @NonNull Class<T> type) {
+    static <T extends Record> T read(ConfigurationSection section, Class<T> type) {
         return read(section, type, "");
     }
 
@@ -56,7 +59,7 @@ final class ConfigMapper {
      * @param <T>     The type of the type class.
      * @return An instance of the type.
      */
-    static <T extends Record> @NonNull T read(@NonNull ConfigurationSection section, @NonNull Class<T> type, @NonNull String prefix) {
+    static <T extends Record> T read(ConfigurationSection section, Class<T> type, String prefix) {
         RecordComponent[] components = type.getRecordComponents();
         checkDistinctKeys(components, prefix);
         Object[] values = Arrays.stream(components)
@@ -73,9 +76,10 @@ final class ConfigMapper {
      * @param prefix    The prefix to resolve from.
      * @return The resolved object.
      */
-    static @NonNull Object resolve(@NonNull ConfigurationSection section, @NonNull RecordComponent component, @NonNull String prefix) {
+    static Object resolve(ConfigurationSection section, RecordComponent component, String prefix) {
         String path = Components.path(prefix, component);
         Class<?> type = component.getType();
+        Components.validateDefaultUse(component);
         if (type.isRecord()) {
             return read(section, type.asSubclass(Record.class), path);
         }
@@ -91,13 +95,15 @@ final class ConfigMapper {
         }
 
         Optional<List<Object>> defaults = Components.defaults(component);
-        if (!present && defaults.isEmpty()) {
+        Optional<List<String>> legacyDefaults = Components.legacyDefaults(component);
+        if (!present && defaults.isEmpty() && legacyDefaults.isEmpty()) {
             throw new IllegalStateException("Missing key %s and no @Default annotation declared".formatted(path));
         }
         try {
             return present
                     ? Values.fromNode(Objects.requireNonNull(section.get(path)), type, element)
-                    : Values.fromDefaults(defaults.orElseThrow(), type, element);
+                    : defaults.map(values -> Values.fromDefaults(values, type, element))
+                    .orElseGet(() -> Values.fromLegacyText(legacyDefaults.orElseThrow(), type, element));
         } catch (RuntimeException exception) {
             throw decode(path, exception);
         }
@@ -114,8 +120,8 @@ final class ConfigMapper {
      * @return The resolved optional.
      * @throws IllegalStateException If the optional has no resolvable element type.
      */
-    private static @NonNull Optional<?> optional(@NonNull ConfigurationSection section, @NonNull String path,
-                                                 @NonNull Optional<Class<?>> element, boolean present) {
+    private static Optional<?> optional(ConfigurationSection section, String path,
+                                        Optional<Class<?>> element, boolean present) {
         Class<?> inner = element.orElseThrow(() -> new IllegalStateException(
                 "Optional component %s has no resolvable element type".formatted(path)));
         if (!present) {
@@ -148,12 +154,18 @@ final class ConfigMapper {
      *                               key is absent and the component declares neither a default nor
      *                               {@link DefaultEntry}.
      */
-    private static @NonNull List<? extends Record> recordList(@NonNull ConfigurationSection section, @NonNull String path,
-                                                              @NonNull Class<?> element, boolean present,
-                                                              @NonNull RecordComponent component) {
+    private static List<? extends Record> recordList(ConfigurationSection section, String path,
+                                                     Class<?> element, boolean present,
+                                                     RecordComponent component) {
         if (!present) {
             Optional<List<Object>> defaults = Components.defaults(component);
+            Optional<List<String>> legacyDefaults = Components.legacyDefaults(component);
             if (defaults.filter(declared -> !declared.isEmpty()).isPresent()) {
+                throw new IllegalStateException(
+                        "Record list defaults must be empty; use @DefaultEntry or declare the section %s in the file"
+                                .formatted(path));
+            }
+            if (legacyDefaults.filter(declared -> !declared.isEmpty()).isPresent()) {
                 throw new IllegalStateException(
                         "Record list defaults must be empty; use @DefaultEntry or declare the section %s in the file"
                                 .formatted(path));
@@ -161,7 +173,7 @@ final class ConfigMapper {
             if (component.isAnnotationPresent(DefaultEntry.class)) {
                 return List.of(seed(element.asSubclass(Record.class), path));
             }
-            if (defaults.isEmpty()) {
+            if (defaults.isEmpty() && legacyDefaults.isEmpty()) {
                 throw new IllegalStateException(
                         "Missing key %s: declare @Default.Empty for an empty list, or @DefaultEntry to seed one"
                                 .formatted(path));
@@ -189,7 +201,7 @@ final class ConfigMapper {
      * @return The read records.
      * @throws IllegalArgumentException If an entry is not a section.
      */
-    private static <T extends Record> @NonNull List<T> records(@NonNull List<?> items, @NonNull Class<T> type) {
+    private static <T extends Record> @Unmodifiable List<T> records(List<?> items, Class<T> type) {
         List<T> records = new ArrayList<>(items.size());
         for (int index = 0; index < items.size(); index++) {
             Object item = items.get(index);
@@ -217,7 +229,7 @@ final class ConfigMapper {
      * @throws IllegalStateException If the record cannot be built without a file, or if seeding
      *                               cycles back into a type already being seeded.
      */
-    private static <T extends Record> @NonNull T seed(@NonNull Class<T> type, @NonNull String path) {
+    private static <T extends Record> T seed(Class<T> type, String path) {
         Set<Class<?>> seeding = SEEDING.get();
         if (!seeding.add(type)) {
             throw new IllegalStateException("@DefaultEntry on %s cycles through %s"
@@ -240,7 +252,7 @@ final class ConfigMapper {
      * @return The entry as a section.
      * @throws IllegalArgumentException If the entry is not a section.
      */
-    private static @NonNull ConfigurationSection entry(Object item) {
+    private static ConfigurationSection entry(Object item) {
         if (item instanceof ConfigurationSection section) {
             return section;
         }
@@ -258,7 +270,7 @@ final class ConfigMapper {
      * @param exception The underlying failure.
      * @return The wrapped exception.
      */
-    private static @NonNull IllegalArgumentException decode(@NonNull String path, @NonNull RuntimeException exception) {
+    private static IllegalArgumentException decode(String path, RuntimeException exception) {
         return new IllegalArgumentException("Cannot decode %s: %s".formatted(path, exception.getMessage()), exception);
     }
 
@@ -269,7 +281,7 @@ final class ConfigMapper {
      * @param prefix     The prefix.
      * @throws IllegalStateException If duplicate keys exist.
      */
-    static void checkDistinctKeys(@NonNull RecordComponent[] components, @NonNull String prefix) {
+    static void checkDistinctKeys(RecordComponent[] components, String prefix) {
         Arrays.stream(components)
                 .collect(Collectors.groupingBy(component -> Components.path(prefix, component)))
                 .entrySet().stream()
@@ -290,7 +302,7 @@ final class ConfigMapper {
      * @return An instance of the record.
      * @throws IllegalStateException If a field cannot be constructed.
      */
-    static <T extends Record> @NonNull T instantiate(@NonNull Class<T> type, @NonNull RecordComponent[] components, @NonNull Object[] values) {
+    static <T extends Record> T instantiate(Class<T> type, RecordComponent[] components, Object[] values) {
         Class<?>[] parameters = Arrays.stream(components)
                 .map(RecordComponent::getType)
                 .toArray(Class<?>[]::new);
@@ -319,7 +331,7 @@ final class ConfigMapper {
      * @param type        The record type, used for the failure message.
      * @throws IllegalStateException If access cannot be granted.
      */
-    private static void open(@NonNull Constructor<?> constructor, @NonNull Class<?> type) {
+    private static void open(Constructor<?> constructor, Class<?> type) {
         try {
             constructor.setAccessible(true);
         } catch (RuntimeException exception) {

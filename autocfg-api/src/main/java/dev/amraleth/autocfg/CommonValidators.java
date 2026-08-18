@@ -6,7 +6,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,7 +54,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value lies outside the range.
      */
-    public static @NonNull Chain intRange(int value, int lower, int upper) {
+    public static Chain intRange(int value, int lower, int upper) {
         if (!(lower <= value && value <= upper)) {
             throw new IllegalArgumentException("Value must be between %s and %s inclusive, is %s"
                     .formatted(lower, upper, value));
@@ -72,7 +71,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value lies outside the range.
      */
-    public static @NonNull Chain intRangeExclusive(int value, int lower, int upper) {
+    public static Chain intRangeExclusive(int value, int lower, int upper) {
         if (!(lower < value && value < upper)) {
             throw new IllegalArgumentException("Value must be between %s and %s exclusive, is %s"
                     .formatted(lower, upper, value));
@@ -89,7 +88,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value lies outside the range.
      */
-    public static @NonNull Chain longRange(long value, long lower, long upper) {
+    public static Chain longRange(long value, long lower, long upper) {
         if (!(lower <= value && value <= upper)) {
             throw new IllegalArgumentException("Value must be between %s and %s inclusive, is %s"
                     .formatted(lower, upper, value));
@@ -106,7 +105,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value lies outside the range.
      */
-    public static @NonNull Chain longRangeExclusive(long value, long lower, long upper) {
+    public static Chain longRangeExclusive(long value, long lower, long upper) {
         if (!(lower < value && value < upper)) {
             throw new IllegalArgumentException("Value must be between %s and %s exclusive, is %s"
                     .formatted(lower, upper, value));
@@ -123,7 +122,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value lies outside the range.
      */
-    public static @NonNull Chain doubleRange(double value, double lower, double upper) {
+    public static Chain doubleRange(double value, double lower, double upper) {
         if (!(lower <= value && value <= upper)) {
             throw new IllegalArgumentException("Value must be between %s and %s inclusive, is %s"
                     .formatted(lower, upper, value));
@@ -140,7 +139,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value lies outside the range.
      */
-    public static @NonNull Chain doubleRangeExclusive(double value, double lower, double upper) {
+    public static Chain doubleRangeExclusive(double value, double lower, double upper) {
         if (!(lower < value && value < upper)) {
             throw new IllegalArgumentException("Value must be between %s and %s exclusive, is %s"
                     .formatted(lower, upper, value));
@@ -156,7 +155,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value is not finite.
      */
-    public static @NonNull Chain finite(double value, @NonNull String name) {
+    public static Chain finite(double value, String name) {
         if (!Double.isFinite(value)) {
             throw new IllegalArgumentException("%s must be finite, is %s".formatted(name, value));
         }
@@ -170,7 +169,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value is not a valid port number.
      */
-    public static @NonNull Chain portRange(int value) {
+    public static Chain portRange(int value) {
         return intRange(value, MIN_PORT, MAX_PORT);
     }
 
@@ -182,7 +181,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value is zero or negative.
      */
-    public static @NonNull Chain positive(int value, @NonNull String name) {
+    public static Chain positive(int value, String name) {
         if (value <= 0) {
             throw new IllegalArgumentException("%s must be positive, is %s".formatted(name, value));
         }
@@ -197,7 +196,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value is zero or negative.
      */
-    public static @NonNull Chain positive(long value, @NonNull String name) {
+    public static Chain positive(long value, String name) {
         if (value <= 0) {
             throw new IllegalArgumentException("%s must be positive, is %s".formatted(name, value));
         }
@@ -212,7 +211,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value is zero, negative, or {@code NaN}.
      */
-    public static @NonNull Chain positive(double value, @NonNull String name) {
+    public static Chain positive(double value, String name) {
         if (!(value > 0)) {
             throw new IllegalArgumentException("%s must be positive, is %s".formatted(name, value));
         }
@@ -227,7 +226,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value is negative.
      */
-    public static @NonNull Chain nonNegative(int value, @NonNull String name) {
+    public static Chain nonNegative(int value, String name) {
         if (value < 0) {
             throw new IllegalArgumentException("%s must not be negative, is %s".formatted(name, value));
         }
@@ -242,7 +241,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value is negative.
      */
-    public static @NonNull Chain nonNegative(long value, @NonNull String name) {
+    public static Chain nonNegative(long value, String name) {
         if (value < 0) {
             throw new IllegalArgumentException("%s must not be negative, is %s".formatted(name, value));
         }
@@ -257,7 +256,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value is negative or {@code NaN}.
      */
-    public static @NonNull Chain nonNegative(double value, @NonNull String name) {
+    public static Chain nonNegative(double value, String name) {
         if (!(value >= 0)) {
             throw new IllegalArgumentException("%s must not be negative, is %s".formatted(name, value));
         }
@@ -272,7 +271,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value is {@code null}.
      */
-    public static @NonNull Chain notNull(@Nullable Object value, @NonNull String name) {
+    public static Chain notNull(@Nullable Object value, String name) {
         if (value == null) {
             throw new IllegalArgumentException("%s must not be null".formatted(name));
         }
@@ -287,7 +286,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the value is blank.
      */
-    public static @NonNull Chain notBlank(@NonNull String value, @NonNull String name) {
+    public static Chain notBlank(String value, String name) {
         if (value.isBlank()) {
             throw new IllegalArgumentException("%s must not be blank".formatted(name));
         }
@@ -303,7 +302,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the text is empty.
      */
-    public static @NonNull Chain notEmpty(@NonNull CharSequence value, @NonNull String name) {
+    public static Chain notEmpty(CharSequence value, String name) {
         if (value.isEmpty()) {
             throw new IllegalArgumentException("%s must not be empty".formatted(name));
         }
@@ -320,8 +319,8 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the text length lies outside the range.
      */
-    public static @NonNull Chain lengthRange(@NonNull CharSequence value, int lower, int upper,
-                                             @NonNull String name) {
+    public static Chain lengthRange(CharSequence value, int lower, int upper,
+                                    String name) {
         if (!(lower <= value.length() && value.length() <= upper)) {
             throw new IllegalArgumentException("%s length must be between %s and %s inclusive, is %s"
                     .formatted(name, lower, upper, value.length()));
@@ -338,8 +337,8 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the text does not fully match the pattern.
      */
-    public static @NonNull Chain matches(@NonNull CharSequence value, @NonNull Pattern pattern,
-                                         @NonNull String name) {
+    public static Chain matches(CharSequence value, Pattern pattern,
+                                String name) {
         if (!pattern.matcher(value).matches()) {
             throw new IllegalArgumentException("%s must match %s, is %s".formatted(name, pattern, value));
         }
@@ -354,7 +353,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the collection is empty.
      */
-    public static @NonNull Chain notEmpty(@NonNull Collection<?> value, @NonNull String name) {
+    public static Chain notEmpty(Collection<?> value, String name) {
         if (value.isEmpty()) {
             throw new IllegalArgumentException("%s must not be empty".formatted(name));
         }
@@ -371,8 +370,8 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If the collection size lies outside the range.
      */
-    public static @NonNull Chain sizeRange(@NonNull Collection<?> value, int lower, int upper,
-                                           @NonNull String name) {
+    public static Chain sizeRange(Collection<?> value, int lower, int upper,
+                                  String name) {
         if (!(lower <= value.size() && value.size() <= upper)) {
             throw new IllegalArgumentException("%s size must be between %s and %s inclusive, is %s"
                     .formatted(name, lower, upper, value.size()));
@@ -387,7 +386,7 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If duplicate values are present.
      */
-    public static @NonNull Chain requireUnique(@NonNull Collection<?> values) {
+    public static Chain requireUnique(Collection<?> values) {
         if (new HashSet<>(values).size() != values.size()) {
             throw new IllegalArgumentException("Duplicate value in collection");
         }
@@ -404,8 +403,8 @@ public final class CommonValidators {
      * @return The fluent validation chain.
      * @throws IllegalArgumentException If two entries produce equal keys.
      */
-    public static <T, K> @NonNull Chain requireUniqueBy(@NonNull Collection<T> list,
-                                                        @NonNull Function<? super T, ? extends K> key) {
+    public static <T, K> Chain requireUniqueBy(Collection<T> list,
+                                               Function<? super T, ? extends K> key) {
         Set<K> seen = new HashSet<>();
         list.forEach(item -> {
             K value = key.apply(item);
@@ -425,102 +424,105 @@ public final class CommonValidators {
      */
     public static final class Chain {
 
+        /**
+         * Prevents callers from creating additional stateless validation chains.
+         */
         private Chain() {
         }
 
-        public @NonNull Chain intRange(int value, int lower, int upper) {
+        public Chain intRange(int value, int lower, int upper) {
             return CommonValidators.intRange(value, lower, upper);
         }
 
-        public @NonNull Chain intRangeExclusive(int value, int lower, int upper) {
+        public Chain intRangeExclusive(int value, int lower, int upper) {
             return CommonValidators.intRangeExclusive(value, lower, upper);
         }
 
-        public @NonNull Chain longRange(long value, long lower, long upper) {
+        public Chain longRange(long value, long lower, long upper) {
             return CommonValidators.longRange(value, lower, upper);
         }
 
-        public @NonNull Chain longRangeExclusive(long value, long lower, long upper) {
+        public Chain longRangeExclusive(long value, long lower, long upper) {
             return CommonValidators.longRangeExclusive(value, lower, upper);
         }
 
-        public @NonNull Chain doubleRange(double value, double lower, double upper) {
+        public Chain doubleRange(double value, double lower, double upper) {
             return CommonValidators.doubleRange(value, lower, upper);
         }
 
-        public @NonNull Chain doubleRangeExclusive(double value, double lower, double upper) {
+        public Chain doubleRangeExclusive(double value, double lower, double upper) {
             return CommonValidators.doubleRangeExclusive(value, lower, upper);
         }
 
-        public @NonNull Chain finite(double value, @NonNull String name) {
+        public Chain finite(double value, String name) {
             return CommonValidators.finite(value, name);
         }
 
-        public @NonNull Chain portRange(int value) {
+        public Chain portRange(int value) {
             return CommonValidators.portRange(value);
         }
 
-        public @NonNull Chain positive(int value, @NonNull String name) {
+        public Chain positive(int value, String name) {
             return CommonValidators.positive(value, name);
         }
 
-        public @NonNull Chain positive(long value, @NonNull String name) {
+        public Chain positive(long value, String name) {
             return CommonValidators.positive(value, name);
         }
 
-        public @NonNull Chain positive(double value, @NonNull String name) {
+        public Chain positive(double value, String name) {
             return CommonValidators.positive(value, name);
         }
 
-        public @NonNull Chain nonNegative(int value, @NonNull String name) {
+        public Chain nonNegative(int value, String name) {
             return CommonValidators.nonNegative(value, name);
         }
 
-        public @NonNull Chain nonNegative(long value, @NonNull String name) {
+        public Chain nonNegative(long value, String name) {
             return CommonValidators.nonNegative(value, name);
         }
 
-        public @NonNull Chain nonNegative(double value, @NonNull String name) {
+        public Chain nonNegative(double value, String name) {
             return CommonValidators.nonNegative(value, name);
         }
 
-        public @NonNull Chain notNull(@Nullable Object value, @NonNull String name) {
+        public Chain notNull(@Nullable Object value, String name) {
             return CommonValidators.notNull(value, name);
         }
 
-        public @NonNull Chain notBlank(@NonNull String value, @NonNull String name) {
+        public Chain notBlank(String value, String name) {
             return CommonValidators.notBlank(value, name);
         }
 
-        public @NonNull Chain nonBlank(@NonNull String value, @NonNull String name) {
+        public Chain nonBlank(String value, String name) {
             return notBlank(value, name);
         }
 
-        public @NonNull Chain notEmpty(@NonNull CharSequence value, @NonNull String name) {
+        public Chain notEmpty(CharSequence value, String name) {
             return CommonValidators.notEmpty(value, name);
         }
 
-        public @NonNull Chain notEmpty(@NonNull Collection<?> value, @NonNull String name) {
+        public Chain notEmpty(Collection<?> value, String name) {
             return CommonValidators.notEmpty(value, name);
         }
 
-        public @NonNull Chain lengthRange(@NonNull CharSequence value, int lower, int upper, @NonNull String name) {
+        public Chain lengthRange(CharSequence value, int lower, int upper, String name) {
             return CommonValidators.lengthRange(value, lower, upper, name);
         }
 
-        public @NonNull Chain matches(@NonNull CharSequence value, @NonNull Pattern pattern, @NonNull String name) {
+        public Chain matches(CharSequence value, Pattern pattern, String name) {
             return CommonValidators.matches(value, pattern, name);
         }
 
-        public @NonNull Chain sizeRange(@NonNull Collection<?> value, int lower, int upper, @NonNull String name) {
+        public Chain sizeRange(Collection<?> value, int lower, int upper, String name) {
             return CommonValidators.sizeRange(value, lower, upper, name);
         }
 
-        public @NonNull Chain requireUnique(@NonNull Collection<?> values) {
+        public Chain requireUnique(Collection<?> values) {
             return CommonValidators.requireUnique(values);
         }
 
-        public <T, K> @NonNull Chain requireUniqueBy(@NonNull Collection<T> list, @NonNull Function<? super T, ? extends K> key) {
+        public <T, K> Chain requireUniqueBy(Collection<T> list, Function<? super T, ? extends K> key) {
             return CommonValidators.requireUniqueBy(list, key);
         }
     }

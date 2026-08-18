@@ -55,8 +55,8 @@ record TestConfig(
     ) {
 
         public DatabaseConfig {
-            CommonValidators.notBlank(host, "host");
-            CommonValidators.portRange(port);
+            CommonValidators.notBlank(host, "host")
+                            .portRange(port);
         }
     }
 

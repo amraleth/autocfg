@@ -3,9 +3,11 @@ package dev.amraleth.autocfg;
 import dev.amraleth.autocfg.annotation.ConfigComment;
 import dev.amraleth.autocfg.annotation.ConfigKey;
 import dev.amraleth.autocfg.annotation.Default;
+import dev.amraleth.autocfg.annotation.DefaultEntry;
+import dev.amraleth.autocfg.annotation.DefaultValue;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.Unmodifiable;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.AnnotatedElement;
@@ -27,6 +29,9 @@ import java.util.function.Function;
  */
 final class Components {
 
+    /**
+     * Prevents instantiation of this utility class.
+     */
     private Components() {
     }
 
@@ -37,7 +42,7 @@ final class Components {
      * @param component The component to generate the path for.
      * @return The path as a string. If the prefix is empty, the component will be treated as the root key.
      */
-    static @NonNull String path(@NonNull String prefix, @NonNull RecordComponent component) {
+    static String path(String prefix, RecordComponent component) {
         String key = Optional.ofNullable(component.getAnnotation(ConfigKey.class))
                 .map(annotation -> key(annotation.value(), component))
                 .orElseGet(() -> kebab(component.getName()));
@@ -52,7 +57,7 @@ final class Components {
      * @return The key.
      * @throws IllegalStateException If the key is blank or contains {@code '.'}.
      */
-    private static @NonNull String key(@NonNull String key, @NonNull RecordComponent component) {
+    private static String key(String key, RecordComponent component) {
         if (key.isBlank()) {
             throw new IllegalStateException("@ConfigKey on %s is blank".formatted(component.getName()));
         }
@@ -72,7 +77,7 @@ final class Components {
      * @param name The name to convert.
      * @return The name converted to kebab case.
      */
-    static @NonNull String kebab(@NonNull String name) {
+    static String kebab(String name) {
         return name.replaceAll("([A-Z]+)([A-Z][a-z])", "$1-$2")
                 .replaceAll("([a-z0-9])([A-Z])", "$1-$2")
                 .toLowerCase(Locale.ROOT);
@@ -84,7 +89,7 @@ final class Components {
      * @param component The component.
      * @return A list of all default values.
      */
-    static @NonNull Optional<List<Object>> defaults(@NonNull RecordComponent component) {
+    static Optional<List<Object>> defaults(RecordComponent component) {
         List<DefaultValues> declared = new ArrayList<>();
         add(declared, component.getAnnotation(Default.Boolean.class), boolean.class, Default.Boolean::value, "@Default.Boolean");
         add(declared, component.getAnnotation(Default.Byte.class), byte.class, Default.Byte::value, "@Default.Byte");
@@ -114,15 +119,79 @@ final class Components {
         return Optional.of(defaults.values());
     }
 
-    private static <A extends java.lang.annotation.Annotation> void add(@NonNull List<DefaultValues> defaults,
+    /**
+     * Gets deprecated text defaults declared for a component.
+     *
+     * @param component The component to inspect.
+     * @return An immutable list of literals, or empty when no legacy default is declared.
+     */
+    static Optional<List<String>> legacyDefaults(RecordComponent component) {
+        return Optional.ofNullable(component.getAnnotation(DefaultValue.class))
+                .map(annotation -> List.of(annotation.value()));
+    }
+
+    /**
+     * Rejects default annotations whose target component cannot consume them.
+     *
+     * @param component The component to validate.
+     * @throws IllegalStateException If annotations conflict or are unsupported for the component.
+     */
+    static void validateDefaultUse(RecordComponent component) {
+        boolean hasTypedDefault = component.getAnnotationsByType(Default.Empty.class).length > 0
+                || component.getAnnotation(Default.Boolean.class) != null
+                || component.getAnnotation(Default.Byte.class) != null
+                || component.getAnnotation(Default.Short.class) != null
+                || component.getAnnotation(Default.Integer.class) != null
+                || component.getAnnotation(Default.Long.class) != null
+                || component.getAnnotation(Default.Float.class) != null
+                || component.getAnnotation(Default.Double.class) != null
+                || component.getAnnotation(Default.Character.class) != null
+                || component.getAnnotation(Default.String.class) != null
+                || component.getAnnotation(Default.Enum.class) != null
+                || component.getAnnotation(Default.Duration.class) != null
+                || component.getAnnotation(Default.NamespacedKey.class) != null
+                || component.getAnnotation(Default.Material.class) != null
+                || component.getAnnotation(Default.Text.class) != null;
+        boolean hasDefault = hasTypedDefault || component.isAnnotationPresent(DefaultValue.class);
+        if (hasDefault && (component.getType().isRecord() || component.getType() == Optional.class)) {
+            throw new IllegalStateException("Default annotation on %s is not supported"
+                    .formatted(component.getName()));
+        }
+        if (component.isAnnotationPresent(DefaultEntry.class)
+                && (component.getType() != List.class || element(component).filter(Class::isRecord).isEmpty())) {
+            throw new IllegalStateException("@DefaultEntry on %s requires List<SomeRecord>"
+                    .formatted(component.getName()));
+        }
+        if (hasTypedDefault && component.isAnnotationPresent(DefaultValue.class)) {
+            throw new IllegalStateException("Multiple defaults declared on %s".formatted(component.getName()));
+        }
+    }
+
+    /**
+     * Adds one declared annotation default to the collected defaults.
+     *
+     * @param defaults   The mutable collection receiving the default.
+     * @param annotation The annotation, which may be absent.
+     * @param type       The expected value type, or {@code null} for text defaults.
+     * @param values     Extracts the annotation's value array.
+     * @param name       The annotation name used in diagnostics.
+     * @param <A>        The annotation type.
+     */
+    private static <A extends java.lang.annotation.Annotation> void add(List<DefaultValues> defaults,
                                                                         @Nullable A annotation, @Nullable Class<?> type,
-                                                                        @NonNull Function<A, Object> values, @NonNull String name) {
+                                                                        Function<A, Object> values, String name) {
         if (annotation != null) {
             defaults.add(new DefaultValues(type, array(values.apply(annotation)), name));
         }
     }
 
-    private static @NonNull List<Object> array(@NonNull Object array) {
+    /**
+     * Boxes an annotation value array as an immutable list.
+     *
+     * @param array A primitive or reference array supplied by an annotation.
+     * @return The immutable boxed values in declaration order.
+     */
+    private static @Unmodifiable List<Object> array(Object array) {
         List<Object> values = new ArrayList<>(Array.getLength(array));
         for (int index = 0; index < Array.getLength(array); index++) {
             values.add(Array.get(array, index));
@@ -130,7 +199,14 @@ final class Components {
         return List.copyOf(values);
     }
 
-    private static void validate(@NonNull RecordComponent component, @NonNull DefaultValues defaults) {
+    /**
+     * Validates that a collected typed default matches its component type.
+     *
+     * @param component The component that declares the default.
+     * @param defaults  The collected default metadata.
+     * @throws IllegalStateException If the default does not match the component type.
+     */
+    private static void validate(RecordComponent component, DefaultValues defaults) {
         if ("@Default.Empty".equals(defaults.name())) {
             if (component.getType() != List.class || element(component).filter(Class::isRecord).isEmpty()) {
                 throw new IllegalStateException("@Default.Empty on %s requires List<SomeRecord>"
@@ -154,7 +230,13 @@ final class Components {
                 .formatted(defaults.name(), component.getName(), actual.getSimpleName()));
     }
 
-    private static @NonNull Class<?> boxed(@NonNull Class<?> type) {
+    /**
+     * Returns the wrapper type for a primitive, or the supplied reference type.
+     *
+     * @param type The type to normalize.
+     * @return The corresponding wrapper or unchanged reference type.
+     */
+    private static Class<?> boxed(Class<?> type) {
         return switch (type.getName()) {
             case "boolean" -> Boolean.class;
             case "byte" -> Byte.class;
@@ -168,7 +250,14 @@ final class Components {
         };
     }
 
-    private record DefaultValues(@Nullable Class<?> type, @NonNull List<Object> values, @NonNull String name) {
+    /**
+     * Immutable metadata describing a declared default annotation.
+     *
+     * @param type   The expected value type, or {@code null} for text defaults.
+     * @param values The immutable default values.
+     * @param name   The annotation name used in diagnostics.
+     */
+    private record DefaultValues(@Nullable Class<?> type, List<Object> values, String name) {
     }
 
     /**
@@ -179,7 +268,7 @@ final class Components {
      * @return The value.
      * @throws IllegalStateException if the component cannot be read.
      */
-    static @NonNull Object value(@NonNull RecordComponent component, @NonNull Record owner) {
+    static Object value(RecordComponent component, Record owner) {
         try {
             Method accessor = component.getAccessor();
             accessor.setAccessible(true);
@@ -198,7 +287,7 @@ final class Components {
      * @return An optional class. Empty if the component is not generic, or if its type argument is
      * itself generic.
      */
-    static @NonNull Optional<Class<?>> element(@NonNull RecordComponent component) {
+    static Optional<Class<?>> element(RecordComponent component) {
         return component.getGenericType() instanceof ParameterizedType type
                 && type.getActualTypeArguments().length == 1
                 && type.getActualTypeArguments()[0] instanceof Class<?> aType
@@ -212,7 +301,7 @@ final class Components {
      * @param element The element.
      * @return A list of all comments.
      */
-    static @NonNull List<String> comments(@NonNull AnnotatedElement element) {
+    static List<String> comments(AnnotatedElement element) {
         return Optional.ofNullable(element.getAnnotation(ConfigComment.class))
                 .map(comment -> List.of(comment.value()))
                 .orElseGet(List::of);

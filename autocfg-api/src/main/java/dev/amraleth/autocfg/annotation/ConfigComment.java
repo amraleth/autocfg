@@ -1,6 +1,5 @@
 package dev.amraleth.autocfg.annotation;
 
-import org.jspecify.annotations.NonNull;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -47,5 +46,5 @@ public @interface ConfigComment {
      *
      * @return The comment lines.
      */
-    @NonNull String[] value();
+    String[] value();
 }

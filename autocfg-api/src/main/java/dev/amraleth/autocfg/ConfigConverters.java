@@ -8,7 +8,6 @@ import java.util.function.Function;
 
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -43,14 +42,14 @@ public final class ConfigConverters {
      * @param fromNode The function for transforming from a node to a value.
      * @param toNode   The function for transforming from a value to a node.
      */
-    record Converter(@NonNull Function<@NonNull Object, @NonNull Object> fromNode,
-                     @NonNull Function<@NonNull Object, @NonNull Object> toNode) {
+    record Converter(Function<Object, Object> fromNode,
+                     Function<Object, Object> toNode) {
     }
 
     /**
      * The registered converters, keyed by the type they produce.
      */
-    private static final @NonNull Map<Class<?>, Converter> REGISTRY = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Converter> REGISTRY = new ConcurrentHashMap<>();
 
     static {
         register(Duration.class,
@@ -64,6 +63,9 @@ public final class ConfigConverters {
                 material -> material.name().toLowerCase(Locale.ROOT));
     }
 
+    /**
+     * Prevents instantiation of this utility class.
+     */
     private ConfigConverters() {
     }
 
@@ -75,9 +77,9 @@ public final class ConfigConverters {
      * @param toNode   The function for transforming from a value to a node.
      * @param <T>      The type the converter produces.
      */
-    public static <T> void register(@NonNull Class<T> type,
-                                    @NonNull Function<@NonNull Object, @NonNull T> fromNode,
-                                    @NonNull Function<@NonNull T, @NonNull Object> toNode) {
+    public static <T> void register(Class<T> type,
+                                    Function<Object, T> fromNode,
+                                    Function<T, Object> toNode) {
         REGISTRY.put(type, new Converter(fromNode::apply, value -> toNode.apply(type.cast(value))));
     }
 
@@ -87,7 +89,7 @@ public final class ConfigConverters {
      * @param type The type to fetch the converter for.
      * @return The converter, or {@code null} if none is registered.
      */
-    static @Nullable Converter converter(@NonNull Class<?> type) {
+    static @Nullable Converter converter(Class<?> type) {
         return REGISTRY.get(type);
     }
 
@@ -98,7 +100,7 @@ public final class ConfigConverters {
      * @return The namespaced key.
      * @throws IllegalArgumentException If the literal is not a valid namespaced key.
      */
-    private static @NonNull NamespacedKey key(@NonNull String literal) {
+    private static NamespacedKey key(String literal) {
         NamespacedKey key = NamespacedKey.fromString(literal);
         if (key == null) {
             throw new IllegalArgumentException("Invalid namespaced key " + literal);
@@ -113,7 +115,7 @@ public final class ConfigConverters {
      * @return The material.
      * @throws IllegalArgumentException If the material is unknown or a legacy material.
      */
-    private static @NonNull Material material(@NonNull String literal) {
+    private static Material material(String literal) {
         Material material = Material.matchMaterial(literal);
         if (material == null) {
             throw new IllegalArgumentException("Unknown material " + literal);

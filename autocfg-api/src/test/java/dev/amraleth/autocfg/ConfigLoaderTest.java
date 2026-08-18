@@ -2,6 +2,7 @@ package dev.amraleth.autocfg;
 
 import dev.amraleth.autocfg.annotation.DefaultEntry;
 import dev.amraleth.autocfg.annotation.Default;
+import dev.amraleth.autocfg.annotation.DefaultValue;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -10,11 +11,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -116,6 +119,60 @@ class ConfigLoaderTest {
         assertEquals("@Default.String on number does not match int", exception.getMessage());
     }
 
+    @Test
+    void supportsDeprecatedTextDefaults() {
+        LegacyDefaults config = ConfigMapper.read(new YamlConfiguration(), LegacyDefaults.class);
+
+        assertEquals(7, config.count());
+        assertEquals(List.of("one", "two"), config.labels());
+    }
+
+    @Test
+    void rejectsDefaultsOnOptionalsAndRecords() {
+        assertThrows(IllegalStateException.class,
+                () -> ConfigMapper.read(new YamlConfiguration(), DefaultedOptional.class));
+        assertThrows(IllegalStateException.class,
+                () -> ConfigMapper.read(new YamlConfiguration(), DefaultedRecord.class));
+    }
+
+    @Test
+    void appliesMigrationsAndUnknownKeyPolicies(@TempDir @NonNull Path directory) throws IOException {
+        Path file = directory.resolve("config.yml");
+        YamlConfiguration document = new YamlConfiguration();
+        document.set("marker", "x");
+        document.set("labels", List.of("one"));
+        document.set("database.host", "localhost");
+        document.set("database.port", 5432);
+        document.set("backups", List.of());
+        document.set("future", true);
+        document.save(file.toFile());
+        List<String> unknown = new ArrayList<>();
+        ConfigLoadOptions options = new ConfigLoadOptions(UnknownKeyPolicy.WARN,
+                List.of(config -> config.set("schema-version", 2)), unknown::add);
+
+        ConfigLoader.load(file.toFile(), ExampleConfig.class, options);
+
+        YamlConfiguration written = YamlConfiguration.loadConfiguration(file.toFile());
+        assertEquals(2, written.getInt("schema-version"));
+        assertEquals(List.of("future", "schema-version"), unknown.stream().sorted().toList());
+
+        ConfigLoader.load(file.toFile(), ExampleConfig.class, ConfigLoadOptions.removeUnknownKeys());
+        YamlConfiguration pruned = YamlConfiguration.loadConfiguration(file.toFile());
+        assertFalse(pruned.contains("future"));
+        assertFalse(pruned.contains("schema-version"));
+    }
+
+    @Test
+    void neverOverwritesMalformedYaml(@TempDir @NonNull Path directory) throws IOException {
+        Path file = directory.resolve("config.yml");
+        String invalidYaml = "broken: [";
+        Files.writeString(file, invalidYaml);
+
+        assertThrows(IOException.class, () -> ConfigLoader.load(file.toFile(), ExampleConfig.class));
+
+        assertEquals(invalidYaml, Files.readString(file));
+    }
+
     record ExampleConfig(
             @Default.Character('x') char marker,
             @Default.String({"one", "two"}) List<String> labels,
@@ -164,8 +221,21 @@ class ConfigLoaderTest {
     ) {
     }
 
-    enum Mode {FAST, SLOW}
+    enum Mode {
+        FAST,
+        SLOW
+    }
 
     record MismatchedDefault(@Default.String("one") int number) {
+    }
+
+    record LegacyDefaults(@DefaultValue("7") int count,
+                          @DefaultValue({"one", "two"}) List<String> labels) {
+    }
+
+    record DefaultedOptional(@Default.String("value") Optional<String> value) {
+    }
+
+    record DefaultedRecord(@Default.String("ignored") DatabaseConfig database) {
     }
 }
