@@ -4,6 +4,7 @@ minecraft = "26.2"
 
 paper = "26.2.build.112-stable"
 jspecify = "1.0.0"
+junit = "6.1.3"
 
 run-paper = "3.1.0"
 plugin-yml = "0.9.0"
@@ -12,6 +13,7 @@ maven-publish = "0.37.0"
 [libraries]
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 
 [plugins]
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-paper" }

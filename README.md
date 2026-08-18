@@ -181,6 +181,16 @@ tasks.shadowJar {
 }
 ```
 
+## Testing
+
+The test suite runs as ordinary JVM tests and does not start a Paper server.
+It uses Paper's `YamlConfiguration` directly to cover configuration loading and
+writing:
+
+```bash
+./gradlew test
+```
+
 ## Reference
 
 ### Loading

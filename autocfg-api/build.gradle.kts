@@ -7,6 +7,15 @@ plugins {
 dependencies {
     compileOnly(libs.paper.api)
     compileOnly(libs.jspecify)
+
+    testImplementation(libs.paper.api)
+    testImplementation(platform(libs.junit.bom))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 mavenPublishing {
