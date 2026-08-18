@@ -56,8 +56,8 @@ public record MyConfig(
             int port
     ) {
         DatabaseConfig {
-            CommonValidators.notBlank(host, "host");
-            CommonValidators.portRange(port);
+            CommonValidators.notBlank(host, "host")
+                    .portRange(port);
         }
     }
 }
@@ -197,10 +197,10 @@ writing, typed defaults, and validators:
 ### Migrating from `@DefaultValue`
 
 `@DefaultValue` remains supported but is deprecated. Existing configurations
-continue to load unchanged. New records should use the matching typed
-`@Default.*` annotation, for example `@DefaultValue("3")` becomes
-`@Default.Integer(3)`, and `@DefaultValue("PT30S")` becomes
-`@Default.Duration("PT30S")`.
+continue to load unchanged, including defaults for scalar values and lists.
+New records should use the matching typed `@Default.*` annotation: for
+example, `@DefaultValue("3")` becomes `@Default.Integer(3)`, and
+`@DefaultValue("PT30S")` becomes `@Default.Duration("PT30S")`.
 
 ### Loading
 
@@ -229,8 +229,13 @@ MyConfig config = ConfigLoader.load(file, MyConfig.class, options);
 ```
 
 `PRESERVE` keeps unknown root keys, `WARN` reports them to the listener, and
-`REMOVE` deletes them before saving. Migration hooks run after YAML parsing and
-before AutoCfg maps the document to the record.
+`REMOVE` deletes them before saving. These policies apply only to root keys;
+nested unknown keys are always preserved. Migration hooks run in list order
+after YAML parsing and before AutoCfg maps the document to the record.
+
+For the common cases, use `ConfigLoadOptions.defaults()`,
+`ConfigLoadOptions.warnUnknownKeys(listener)`, or
+`ConfigLoadOptions.removeUnknownKeys()`.
 
 ### Annotations
 
@@ -245,9 +250,10 @@ before AutoCfg maps the document to the record.
 Keys are derived from component names in kebab-case, splitting acronyms at
 their trailing boundary - `maxHTTPRetries` becomes `max-http-retries`.
 
-One `@Default.*` annotation is required on every component that is not a record, a record
-list or an `Optional`. A component with neither a value in the file nor a
-default raises `IllegalStateException`.
+One default annotation is required on every component that is not a record, a
+record list, or an `Optional`. Prefer one matching `@Default.*` annotation;
+the deprecated `@DefaultValue` is also accepted for migration. A component with
+neither a value in the file nor a default raises `IllegalStateException`.
 
 Use the annotation that matches the component type:
 
@@ -327,11 +333,11 @@ comment on the list component itself does.
 Register a converter for anything else, before the config that uses it loads:
 
 ```java
-ConfigConverters.register(UUID .class,
-                          node ->UUID.
-
-fromString(node.toString()),
-UUID::toString);
+ConfigConverters.register(
+        UUID.class,
+        node -> UUID.fromString(node.toString()),
+        UUID::toString
+);
 ```
 
 The registry is static, and therefore scoped to the classloader holding the
@@ -353,12 +359,8 @@ in one fluent sequence:
 
 ```java
 CommonValidators.requireUnique(rules)
-        .
-
-nonBlank(name, "name")
-        .
-
-positive(maxRetries, "maxRetries");
+        .nonBlank(name, "name")
+        .positive(maxRetries, "maxRetries");
 ```
 
 ### Failures
