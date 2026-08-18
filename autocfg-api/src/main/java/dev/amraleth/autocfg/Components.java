@@ -6,6 +6,7 @@ import dev.amraleth.autocfg.annotation.Default;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Array;
@@ -114,8 +115,8 @@ final class Components {
     }
 
     private static <A extends java.lang.annotation.Annotation> void add(@NonNull List<DefaultValues> defaults,
-                                                                        A annotation, Class<?> type,
-                                                                        Function<A, Object> values, String name) {
+                                                                        @Nullable A annotation, @Nullable Class<?> type,
+                                                                        @NonNull Function<A, Object> values, @NonNull String name) {
         if (annotation != null) {
             defaults.add(new DefaultValues(type, array(values.apply(annotation)), name));
         }
@@ -167,7 +168,7 @@ final class Components {
         };
     }
 
-    private record DefaultValues(Class<?> type, List<Object> values, String name) {
+    private record DefaultValues(@Nullable Class<?> type, @NonNull List<Object> values, @NonNull String name) {
     }
 
     /**

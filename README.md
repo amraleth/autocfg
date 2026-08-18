@@ -89,8 +89,8 @@ name: name
 material: stone
 # The materials to accept.
 materials:
-- stone
-- dirt
+  - stone
+  - dirt
 # How long to wait, as an ISO-8601 duration.
 timeout: PT30S
 # How often to retry a failed HTTP request.
@@ -140,6 +140,7 @@ dependencies {
 ### Maven
 
 ```xml
+
 <dependency>
     <groupId>dev.amraleth</groupId>
     <artifactId>autocfg</artifactId>
@@ -183,9 +184,9 @@ tasks.shadowJar {
 
 ## Testing
 
-The test suite runs as ordinary JVM tests and does not start a Paper server.
-It uses Paper's `YamlConfiguration` directly to cover configuration loading and
-writing:
+The test suite runs as ordinary JVM tests and never starts a Paper server. It
+uses Paper's `YamlConfiguration` directly to cover configuration loading,
+writing, typed defaults, and validators:
 
 ```bash
 ./gradlew test
@@ -195,24 +196,25 @@ writing:
 
 ### Loading
 
-| Call | File |
-| ---- | ---- |
-| `ConfigLoader.loadDefaultConfig(plugin, type)` | `config.yml` in the plugin's data folder |
-| `ConfigLoader.load(plugin, type)` | Named after the record, kebab-cased - `MyConfig` becomes `my-config.yml` |
-| `ConfigLoader.load(plugin, "other.yml", type)` | A named file in the plugin's data folder |
-| `ConfigLoader.load(file, type)` | An arbitrary file |
+| Call                                           | File                                                                     |
+|------------------------------------------------|--------------------------------------------------------------------------|
+| `ConfigLoader.loadDefaultConfig(plugin, type)` | `config.yml` in the plugin's data folder                                 |
+| `ConfigLoader.load(plugin, type)`              | Named after the record, kebab-cased - `MyConfig` becomes `my-config.yml` |
+| `ConfigLoader.load(plugin, "other.yml", type)` | A named file in the plugin's data folder                                 |
+| `ConfigLoader.load(file, type)`                | An arbitrary file                                                        |
 
 Every call reads the file, fills in whatever is missing, and saves it back.
 Missing parent directories are created.
 
 ### Annotations
 
-| Annotation | Applies to | Effect |
-| ---------- | ---------- | ------ |
-| `@Default.*` | Record component | A typed default used when the key is absent. Each annotation also accepts multiple values for a `List`. |
-| `@DefaultEntry` | `List<SomeRecord>` component | Seeds the list with one entry built from the element record's defaults when the key is absent. |
+| Annotation       | Applies to                    | Effect                                                                                                                          |
+|------------------|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| `@Default.*`     | Record component              | A typed default used when the key is absent. Value-carrying defaults also accept multiple values for a `List`.                  |
+| `@Default.Empty` | `List<SomeRecord>` component  | Declares an empty record list when the key is absent.                                                                           |
+| `@DefaultEntry`  | `List<SomeRecord>` component  | Seeds the list with one entry built from the element record's defaults when the key is absent.                                  |
 | `@ConfigComment` | Record component, record type | Comment lines rendered above the key. On a type, it applies to every component of that type that carries no comment of its own. |
-| `@ConfigKey` | Record component | Overrides the generated key. Must not be blank or contain `.`. |
+| `@ConfigKey`     | Record component              | Overrides the generated key. Must not be blank or contain `.`.                                                                  |
 
 Keys are derived from component names in kebab-case, splitting acronyms at
 their trailing boundary - `maxHTTPRetries` becomes `max-http-retries`.
@@ -221,11 +223,22 @@ One `@Default.*` annotation is required on every component that is not a record,
 list or an `Optional`. A component with neither a value in the file nor a
 default raises `IllegalStateException`.
 
-Use the annotation that matches the component type: `Boolean`, `Byte`, `Short`,
-`Integer`, `Long`, `Float`, `Double`, `Character`, or `String` for primitives,
-their boxes, and strings; `Enum`, `Duration`, `NamespacedKey`, or `Material` for
-the built-ins; and `Text` for a consumer-registered converter. Each accepts an
-array for a `List<T>` component. `Empty` is reserved for an empty `List<Record>`.
+Use the annotation that matches the component type:
+
+| Component type                                    | Default annotation                                                 |
+|---------------------------------------------------|--------------------------------------------------------------------|
+| `boolean` / `Boolean` through `double` / `Double` | Matching `@Default.Boolean` through `@Default.Double`              |
+| `char` / `Character`                              | `@Default.Character`                                               |
+| `String`                                          | `@Default.String`                                                  |
+| Any enum                                          | `@Default.Enum`, using its case-insensitive constant name          |
+| `Duration`, `NamespacedKey`, `Material`           | `@Default.Duration`, `@Default.NamespacedKey`, `@Default.Material` |
+| Type with a consumer-registered converter         | `@Default.Text`                                                    |
+| `List<T>`                                         | The matching value-carrying annotation with one literal per entry  |
+| `List<SomeRecord>`                                | `@Default.Empty` or `@DefaultEntry`                                |
+
+Value-carrying annotations take an array, so a scalar can use the convenient
+single-value form such as `@Default.Integer(3)`, while a list uses
+`@Default.Integer({3, 5, 8})`.
 
 ### Supported types
 
@@ -246,6 +259,7 @@ seeds a single entry built from the element record's own `@Default.*` annotation
 fresh file shows what an entry looks like:
 
 ```java
+
 @ConfigComment("The scheduled backups.")
 @DefaultEntry
 List<BackupConfig> backups
@@ -256,14 +270,15 @@ record BackupConfig(
 
         @Default.Duration("PT1H")
         Duration interval
-) { }
+) {
+}
 ```
 
 ```yaml
 # The scheduled backups.
 backups:
-- label: backup
-  interval: PT1H
+  - label: backup
+    interval: PT1H
 ```
 
 Every component of a seeded record must be resolvable without a file - a
@@ -286,9 +301,11 @@ comment on the list component itself does.
 Register a converter for anything else, before the config that uses it loads:
 
 ```java
-ConfigConverters.register(UUID.class,
-        node -> UUID.fromString(node.toString()),
-        UUID::toString);
+ConfigConverters.register(UUID .class,
+                          node ->UUID.
+
+fromString(node.toString()),
+UUID::toString);
 ```
 
 The registry is static, and therefore scoped to the classloader holding the
@@ -299,26 +316,31 @@ a copy loaded through `libraries` is shared across every plugin using it.
 
 Validate in the record's compact constructor. Exceptions thrown there propagate
 out of the loader unchanged, so a bad value fails the load with your own
-message. `CommonValidators` covers the usual cases: `intRange`, `longRange`,
-`doubleRange`, `positive`, `nonNegative`, `finite`, `notNull`, `notBlank`,
-`lengthRange`, `matches`, `notEmpty`, `sizeRange`, `requireUnique`, and
-`requireUniqueBy`.
+message. `CommonValidators` covers inclusive and exclusive ranges for `int`,
+`long`, and `double`; positive and non-negative checks; finite doubles; valid
+ports; null, blank, empty, length, and regular-expression checks; collection
+size and uniqueness checks; and uniqueness by a derived key.
 
-Every validator returns a stateless `CommonValidators.Chain`, so several
-independent checks can be written as one fluent sequence:
+Every validator returns a stateless `CommonValidators.Chain`. Each link checks
+the argument supplied to that link, allowing independent values to be validated
+in one fluent sequence:
 
 ```java
 CommonValidators.requireUnique(rules)
-        .nonBlank(name, "name")
-        .positive(maxRetries, "maxRetries");
+        .
+
+nonBlank(name, "name")
+        .
+
+positive(maxRetries, "maxRetries");
 ```
 
 ### Failures
 
-| Exception | Cause |
-| --------- | ----- |
-| `IOException` | The file cannot be created, read, parsed or saved |
-| `IllegalStateException` | The record is malformed, or a required key has no value and no default |
+| Exception                  | Cause                                                                  |
+|----------------------------|------------------------------------------------------------------------|
+| `IOException`              | The file cannot be created, read, parsed or saved                      |
+| `IllegalStateException`    | The record is malformed, or a required key has no value and no default |
 | `IllegalArgumentException` | A value cannot be decoded into its component type, or fails validation |
 
 A file that cannot be parsed raises `IOException` before anything is written, so
