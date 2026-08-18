@@ -1,6 +1,10 @@
 package dev.amraleth.autocfg;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.jetbrains.annotations.Unmodifiable;
@@ -123,6 +127,9 @@ final class Values {
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static @NonNull Object scalar(@NonNull Object node, @NonNull Class<?> target) {
+        if (target == char.class || target == Character.class) {
+            return character(node.toString());
+        }
         ConfigConverters.Converter converter = ConfigConverters.converter(target);
         if (converter != null) {
             return converter.fromNode().apply(node);
@@ -212,6 +219,20 @@ final class Values {
             return bool(literal);
         }
         return scalar(literal, target);
+    }
+
+    /**
+     * Parses a single character.
+     *
+     * @param literal The literal to parse.
+     * @return The character.
+     * @throws IllegalArgumentException If the literal does not contain exactly one character.
+     */
+    private static char character(@NonNull String literal) {
+        if (literal.length() != 1) {
+            throw new IllegalArgumentException("Expected a single character, got " + literal);
+        }
+        return literal.charAt(0);
     }
 
     /**
